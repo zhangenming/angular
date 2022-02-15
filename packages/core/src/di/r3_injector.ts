@@ -107,6 +107,8 @@ export abstract class EnvironmentInjector implements Injector {
    * @internal
    */
   abstract onDestroy(callback: () => void): void;
+
+  __ngInjectorMetadata__ = new Map();
 }
 
 export class R3Injector extends EnvironmentInjector {
@@ -133,6 +135,8 @@ export class R3Injector extends EnvironmentInjector {
   private _destroyed = false;
 
   private injectorDefTypes: Set<Type<unknown>>;
+
+  tokenToProvider = new Map();
 
   constructor(
       providers: Array<Provider|ImportedNgModuleProviders>, readonly parent: Injector,
@@ -195,6 +199,7 @@ export class R3Injector extends EnvironmentInjector {
   override runInContext<ReturnT>(fn: () => ReturnT): ReturnT {
     this.assertNotDestroyed();
 
+    // console.log('setting current injector', this);
     const previousInjector = setCurrentInjector(this);
     const previousInjectImplementation = setInjectImplementation(undefined);
     try {
@@ -210,6 +215,7 @@ export class R3Injector extends EnvironmentInjector {
       flags = InjectFlags.Default): T {
     this.assertNotDestroyed();
     // Set the injection context.
+    // console.log('setting current injector', this);
     const previousInjector = setCurrentInjector(this);
     const previousInjectImplementation = setInjectImplementation(undefined);
     try {
@@ -268,6 +274,7 @@ export class R3Injector extends EnvironmentInjector {
 
   /** @internal */
   resolveInjectorInitializers() {
+    // console.log('setting current injector', this);
     const previousInjector = setCurrentInjector(this);
     const previousInjectImplementation = setInjectImplementation(undefined);
     try {
@@ -342,6 +349,7 @@ export class R3Injector extends EnvironmentInjector {
       }
     }
     this.records.set(token, record);
+    this.tokenToProvider.set(token, provider);
   }
 
   private hydrate<T>(token: ProviderToken<T>, record: Record<T>): T {

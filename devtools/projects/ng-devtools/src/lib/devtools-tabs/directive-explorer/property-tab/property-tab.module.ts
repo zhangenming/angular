@@ -11,7 +11,11 @@ import {NgModule} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatExpansionModule} from '@angular/material/expansion';
 import {MatIconModule} from '@angular/material/icon';
+import {MatTabsModule} from '@angular/material/tabs';
+import {MatToolbarModule} from '@angular/material/toolbar';
 import {MatTooltipModule} from '@angular/material/tooltip';
+
+import {ResolutionPathComponent} from '../../resolution-path/resolution-path.component';
 
 import {ComponentMetadataComponent} from './component-metadata.component';
 import {PropertyTabHeaderComponent} from './property-tab-header.component';
@@ -19,10 +23,14 @@ import {PropertyTabComponent} from './property-tab.component';
 import {PropertyViewModule} from './property-view/property-view.module';
 
 @NgModule({
-  declarations: [PropertyTabComponent, PropertyTabHeaderComponent, ComponentMetadataComponent],
+  declarations: [
+    PropertyTabComponent,
+    PropertyTabHeaderComponent,
+    ComponentMetadataComponent,
+  ],
   imports: [
-    PropertyViewModule, CommonModule, MatButtonModule, MatExpansionModule, MatIconModule,
-    MatTooltipModule
+    MatToolbarModule, PropertyViewModule, CommonModule, MatButtonModule, MatExpansionModule,
+    MatIconModule, MatTooltipModule, MatTabsModule, ResolutionPathComponent
   ],
   exports: [PropertyTabComponent],
 })

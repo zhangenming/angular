@@ -7,10 +7,10 @@
  */
 
 /// <reference types="resize-observer-browser" />
-import {AfterViewInit, Component, Input, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, DoCheck, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild} from '@angular/core';
 import {MatSlideToggleChange} from '@angular/material/slide-toggle';
 import {MatTabNav} from '@angular/material/tabs';
-import {Events, MessageBus, Route} from 'protocol';
+import {ComponentExplorerView, DevToolsNode, Events, MessageBus, Route} from 'protocol';
 import {Subscription} from 'rxjs';
 
 import {ApplicationEnvironment} from '../application-environment/index';
@@ -19,17 +19,26 @@ import {Theme, ThemeService} from '../theme-service';
 import {DirectiveExplorerComponent} from './directive-explorer/directive-explorer.component';
 import {TabUpdate} from './tab-update/index';
 
+type Tab = 'Components'|'Profiler'|'Router Tree'|'Injector Tree';
+
+interface InjectorNode {
+  type: string;
+  owner: any;
+  node: {resolutionPath: any[];};
+  id: string;
+}
+
 @Component({
   selector: 'ng-devtools-tabs',
   templateUrl: './devtools-tabs.component.html',
   styleUrls: ['./devtools-tabs.component.scss'],
 })
-export class DevToolsTabsComponent implements OnInit, OnDestroy, AfterViewInit {
+export class DevToolsTabsComponent implements OnInit, OnDestroy {
   @Input() angularVersion: string|undefined = undefined;
   @ViewChild(DirectiveExplorerComponent) directiveExplorer: DirectiveExplorerComponent;
   @ViewChild('navBar', {static: true}) navbar: MatTabNav;
 
-  activeTab: 'Components'|'Profiler'|'Router Tree' = 'Components';
+  activeTab: Tab = 'Components';
 
   inspectorRunning = false;
   routerTreeEnabled = false;
@@ -39,6 +48,15 @@ export class DevToolsTabsComponent implements OnInit, OnDestroy, AfterViewInit {
   currentTheme: Theme;
 
   routes: Route[] = [];
+  forest: DevToolsNode[];
+  injectorTree: any = [];
+
+  private _defaultTabs: Tab[] = ['Components', 'Profiler', 'Injector Tree']
+  tabs: Tab[] = this._defaultTabs;
+
+  latestSHA = '';
+
+  collapseSiblingElementInjector = false;
 
   constructor(
       public tabUpdate: TabUpdate, public themeService: ThemeService,
@@ -51,12 +69,23 @@ export class DevToolsTabsComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this._messageBus.on('updateRouterTree', (routes) => {
       this.routes = routes || [];
+      if (this.routes.length > 0) {
+        this.tabs = [...this._defaultTabs, 'Router Tree'];
+      }
     });
-  }
 
-  get tabs(): string[] {
-    const alwaysShown = ['Components', 'Profiler'];
-    return this.routes.length === 0 ? alwaysShown : [...alwaysShown, 'Router Tree'];
+    this.latestSHA = this._applicationEnvironment.environment.LATEST_SHA.slice(0, 8);
+
+    this._messageBus.on('latestComponentExplorerView', (view: ComponentExplorerView) => {
+      this.forest = view.forest;
+    });
+
+    this._messageBus.on('latestInjectorGraphView', (forestWithInjectorPaths) => {
+      const t0 = performance.now();
+      this.injectorTreeReloaded(forestWithInjectorPaths);
+      const t1 = performance.now();
+      console.log(`Resolution path parsing took ${t1 - t0} milliseconds.`);
+    });
   }
 
   ngAfterViewInit(): void {
@@ -67,15 +96,14 @@ export class DevToolsTabsComponent implements OnInit, OnDestroy, AfterViewInit {
     this._currentThemeSubscription.unsubscribe();
   }
 
-  get latestSHA(): string {
-    return this._applicationEnvironment.environment.LATEST_SHA.slice(0, 8);
-  }
-
-  changeTab(tab: 'Profiler'|'Components'|'Router Tree'): void {
+  changeTab(tab: Tab): void {
     this.activeTab = tab;
     this.tabUpdate.notify();
     if (tab === 'Router Tree') {
       this._messageBus.emit('getRoutes');
+    }
+    if (tab === 'Injector Tree') {
+      this.injectorTree = [...this.injectorTree];
     }
   }
 
@@ -101,5 +129,83 @@ export class DevToolsTabsComponent implements OnInit, OnDestroy, AfterViewInit {
   toggleTimingAPI(change: MatSlideToggleChange): void {
     change.checked ? this._messageBus.emit('enableTimingAPI') :
                      this._messageBus.emit('disableTimingAPI');
+  }
+
+  toggleSiblingElementCollapse(change: MatSlideToggleChange): void {
+    this.collapseSiblingElementInjector = change.checked;
+    this.reloadInjectorTree();
+  }
+
+  reloadInjectorTree() {
+    this._messageBus.emit('getLatestInjectorGraphView');
+  }
+
+  injectorTreeReloaded(forestWithInjectorPaths: DevToolsNode[]): void {
+    const injectorPaths: {node: DevToolsNode, path: any[]}[] = [];
+    const grabInjectorPaths =
+        (node) => {
+          if (node.resolutionPath) {
+            injectorPaths.push({node, path: node.resolutionPath.slice().reverse()});
+          }
+
+          node.children.forEach(child => grabInjectorPaths(child));
+        }
+
+    grabInjectorPaths(forestWithInjectorPaths[0]);
+
+
+    const equalNode = (a: InjectorNode, b: InjectorNode): boolean => {
+      if (this.collapseSiblingElementInjector && a.type === 'Element' && b.type === 'Element' &&
+          a.owner === b.owner && a.node.resolutionPath.length === b.node.resolutionPath.length &&
+          a.id !== b.id) {
+        const [_aElementInjector, ...aInjectors] = a.node.resolutionPath;
+        const [_bElementInjector, ...bInjectors] = b.node.resolutionPath;
+
+        return aInjectors.every(({id}, idx) => bInjectors[idx].id === id);
+      }
+
+      return a.id === b.id;
+    };
+
+    const pathExists = (path, value):
+        any => {
+          let i = 0;
+          while (i < path.length && !equalNode(path[i].injector, value)) {
+            i++;
+          };
+
+          if (i === path.length) {
+            return false;
+          }
+
+          return path[i];
+        }
+
+    const injectorTree: any = [];
+    for (const {path, node} of injectorPaths) {
+      let currentLevel = injectorTree;
+
+      for (const injector of path) {
+        if (injector['type'] === 'Element') {
+          injector.node = node;
+        }
+        let existingPath = pathExists(currentLevel, injector);
+
+        if (existingPath) {
+          currentLevel = existingPath.children;
+          continue;
+        }
+
+        currentLevel.push({
+          injector,
+          children: [],
+        });
+
+        currentLevel = currentLevel[currentLevel.length - 1].children;
+      }
+    }
+
+
+    this.injectorTree = injectorTree;
   }
 }

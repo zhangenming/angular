@@ -6,8 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Component, EventEmitter, Input, Output} from '@angular/core';
-import {DirectivePosition} from 'protocol';
+import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
+import {DirectivePosition, Events, MessageBus} from 'protocol';
 
 import {DirectivePropertyResolver, DirectiveTreeData} from '../../property-resolver/directive-property-resolver';
 import {ElementPropertyResolver, FlatNode} from '../../property-resolver/element-property-resolver';
@@ -21,7 +21,9 @@ export class PropertyViewComponent {
   @Input() directive: string;
   @Output() inspect = new EventEmitter<{node: FlatNode; directivePosition: DirectivePosition}>();
 
-  constructor(private _nestedProps: ElementPropertyResolver) {}
+  constructor(
+      private _nestedProps: ElementPropertyResolver,
+  ) {}
 
   get controller(): DirectivePropertyResolver|undefined {
     return this._nestedProps.getDirectiveController(this.directive);

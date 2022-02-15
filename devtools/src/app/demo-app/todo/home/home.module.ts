@@ -12,11 +12,12 @@ import {RouterModule} from '@angular/router';
 
 import {TooltipDirective} from './/tooltip.directive';
 import {SamplePipe} from './sample.pipe';
-import {TodoComponent} from './todo.component';
+import {SomeComponent, TodoComponent} from './todo.component';
 import {TodosComponent} from './todos.component';
 import {TodosFilter} from './todos.pipe';
 
 @NgModule({
+  providers: [],
   imports: [
     CommonModule,
     RouterModule.forChild([
@@ -27,7 +28,8 @@ import {TodosFilter} from './todos.pipe';
       },
     ]),
   ],
-  declarations: [SamplePipe, TodosComponent, TodoComponent, TodosFilter, TooltipDirective],
+  declarations:
+      [SamplePipe, TodosComponent, TodoComponent, TodosFilter, TooltipDirective, SomeComponent],
   exports: [TodosComponent],
 })
 export class HomeModule {

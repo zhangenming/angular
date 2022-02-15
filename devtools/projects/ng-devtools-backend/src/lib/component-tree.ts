@@ -6,10 +6,10 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ComponentExplorerViewQuery, DirectiveMetadata, DirectivesProperties, ElementPosition, PropertyQueryTypes, UpdatedStateData,} from 'protocol';
+import {ComponentExplorerViewQuery, DirectiveMetadata, DirectivesProperties, ElementPosition, NestedProp, PropertyQueryTypes, UpdatedStateData,} from 'protocol';
 
 import {buildDirectiveTree, getLViewFromDirectiveOrElementInstance} from './directive-forest/index';
-import {deeplySerializeSelectedProperties, serializeDirectiveState} from './state-serializer/state-serializer';
+import {deeplySerializeSelectedProperties, getPropType, levelSerializer, nestedSerializer, serializeDirectiveState} from './state-serializer/state-serializer';
 
 // Need to be kept in sync with Angular framework
 // We can't directly import it from framework now
@@ -24,28 +24,58 @@ import {ComponentTreeNode, DirectiveInstanceType, ComponentInstanceType} from '.
 
 const ngDebug = () => (window as any).ng;
 
+export const serializeInjectorParameter =
+    (injectorParameter: any, index: number) => {
+      if (injectorParameter.token.ngMetadataName === 'InjectionToken') {
+        return {
+          token: `${injectorParameter.token.constructor.name}(${injectorParameter.token._desc})`,
+              context: injectorParameter.context.factory.name,
+              value: injectorParameter?.value?.constructor?.name, flags: injectorParameter.flags,
+              paramIndex: index
+        }
+      }
+
+      return {
+        token: injectorParameter.token.name, context: injectorParameter.context.factory.name,
+            value: injectorParameter.value.constructor.name, flags: injectorParameter.flags,
+            paramIndex: index
+      }
+    }
+
+export const getInjectorMetadataFromElement =
+    (element: Node|undefined) => {
+      let injectorMetadata = (window as any).ng?.getElementInjectorMetadata?.(element);
+      if (injectorMetadata) {
+        return injectorMetadata.map((injectorParameter: any, index: number) => {
+          return serializeInjectorParameter(injectorParameter, index);
+        });
+      }
+      return [];
+    }
+
 export const getLatestComponentState =
     (query: ComponentExplorerViewQuery, directiveForest?: ComponentTreeNode[]):
-        DirectivesProperties|undefined => {
+        [DirectivesProperties|undefined, any|undefined] => {
           // if a directive forest is passed in we don't have to build the forest again.
           directiveForest = directiveForest ?? buildDirectiveForest();
 
           const node = queryDirectiveForest(query.selectedElement, directiveForest);
           if (!node) {
-            return;
+            return [undefined, undefined];
           }
 
-          const result: DirectivesProperties = {};
+          const directivesProperties: DirectivesProperties = {};
 
           const populateResultSet = (dir: DirectiveInstanceType|ComponentInstanceType) => {
             if (query.propertyQuery.type === PropertyQueryTypes.All) {
-              result[dir.name] = {
+              directivesProperties[dir.name] = {
                 props: serializeDirectiveState(dir.instance),
                 metadata: getDirectiveMetadata(dir.instance),
               };
             }
+
             if (query.propertyQuery.type === PropertyQueryTypes.Specified) {
-              result[dir.name] = {
+              directivesProperties[dir.name] = {
                 props: deeplySerializeSelectedProperties(
                     dir.instance, query.propertyQuery.properties[dir.name] || []),
                 metadata: getDirectiveMetadata(dir.instance),
@@ -58,49 +88,54 @@ export const getLatestComponentState =
             populateResultSet(node.component);
           }
 
-          return result;
-        };
+          let injectorMetadata = getInjectorMetadataFromElement(node.nativeElement!);
 
-const enum DirectiveMetadataKey {
-  INPUTS = 'inputs',
-  OUTPUTS = 'outputs',
-  ENCAPSULATION = 'encapsulation',
-  ON_PUSH = 'onPush',
-}
+          return [directivesProperties, injectorMetadata];
+        };
 
 // Gets directive metadata. For newer versions of Angular (v12+) it uses
 // the global `getDirectiveMetadata`. For prior versions of the framework
 // the method directly interacts with the directive/component definition.
-export const getDirectiveMetadata = (dir: any): DirectiveMetadata => {
-  const getMetadata = (window as any).ng.getDirectiveMetadata;
-  if (getMetadata) {
-    const metadata = getMetadata(dir);
-    if (metadata) {
-      return {
-        inputs: metadata.inputs,
-        outputs: metadata.outputs,
-        encapsulation: metadata.encapsulation,
-        onPush: metadata.changeDetection === ChangeDetectionStrategy.OnPush,
-      };
-    }
+export const getDirectiveMetadata = (dir: any): DirectiveMetadata|undefined => {
+  const metadata = (window as any).ng?.getDirectiveMetadata?.(dir);
+  if (!metadata) {
+    return;
   }
 
-  // Used in older Angular versions, prior to the introduction of `getDirectiveMetadata`.
-  const safelyGrabMetadata = (key: DirectiveMetadataKey) => {
-    try {
-      return dir.constructor.ɵcmp ? dir.constructor.ɵcmp[key] : dir.constructor.ɵdir[key];
-    } catch {
-      console.warn(`Could not find metadata for key: ${key} in directive:`, dir);
-      return undefined;
-    }
+  const serializedMetadata = {
+    inputs: metadata.inputs,
+    outputs: metadata.outputs,
+    encapsulation: metadata.encapsulation,
+    onPush: metadata.changeDetection === ChangeDetectionStrategy.OnPush,
   };
 
-  return {
-    inputs: safelyGrabMetadata(DirectiveMetadataKey.INPUTS),
-    outputs: safelyGrabMetadata(DirectiveMetadataKey.OUTPUTS),
-    encapsulation: safelyGrabMetadata(DirectiveMetadataKey.ENCAPSULATION),
-    onPush: safelyGrabMetadata(DirectiveMetadataKey.ON_PUSH),
-  };
+  let injectorParameters = metadata.injectorParameters;
+  if (injectorParameters) {
+    injectorParameters = injectorParameters.map((injectorParameter: any, index: number) => {
+      if (injectorParameter.flags.Attribute) {
+        return {
+          token: injectorParameter.token, value: injectorParameter.value,
+              flags: injectorParameter.flags, paramIndex: index
+        }
+      }
+
+      if (injectorParameter.flags.Inject) {
+        return {
+          token: injectorParameter.token.constructor.name,
+              value: injectorParameter?.value?.constructor?.name, flags: injectorParameter.flags,
+              paramIndex: index
+        }
+      }
+
+      return {
+        token: injectorParameter.token.name, value: injectorParameter.value.constructor.name,
+            flags: injectorParameter.flags, paramIndex: index
+      }
+    });
+    serializedMetadata['injectorParameters'] = injectorParameters;
+  }
+
+  return serializedMetadata;
 };
 
 const getRootLViewsHelper = (element: Element, rootLViews = new Set<any>()): Set<any> => {

@@ -1,7 +1,25 @@
 :host {
   ::ng-deep {
+    .mat-tab-label {
+      min-width: unset;
+      line-height: 30px;
+      height: 30px;
+      font-size: 13px;
+      padding: 0px 10px;
+      opacity: 1;
+      font-weight: 400;
+    }
+
     mat-expansion-panel {
+      $border-color: #eeeeee;
+
       border-radius: unset !important;
+      border-top: 1px solid $border-color;
+      
+      &.last {
+        border-bottom: 1px solid $border-color;
+      }
+      
     }
 
     .mat-expansion-panel-body {
@@ -54,6 +72,17 @@
           color: #5caace;
         }
       }
+    }
+  }
+}
+
+:host-context(.dark-theme) {
+  ::ng-deep {
+    mat-expansion-panel {
+      $border-color: #3f3f3f;
+
+      border-radius: unset !important;
+      border-color: $border-color;
     }
   }
 }

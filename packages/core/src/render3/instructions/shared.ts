@@ -880,7 +880,7 @@ export function createTNode(
     // prevent class transitions.
     Object.seal(tNode);
   }
-  return tNode;
+  return tNode as any;
 }
 
 

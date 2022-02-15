@@ -7,8 +7,8 @@
  */
 
 import {CdkDragDrop, moveItemInArray} from '@angular/cdk/drag-drop';
-import {Component, EventEmitter, Input, Output} from '@angular/core';
-import {DirectivePosition} from 'protocol';
+import {Component, ElementRef, EventEmitter, Input, OnInit, Output, ViewChild} from '@angular/core';
+import {DirectivePosition, Events, MessageBus} from 'protocol';
 
 import {DirectivePropertyResolver, DirectiveTreeData} from '../../property-resolver/directive-property-resolver';
 import {FlatNode} from '../../property-resolver/element-property-resolver';
@@ -25,6 +25,8 @@ export class PropertyViewBodyComponent {
   @Input() directiveStateControls: DirectiveTreeData;
 
   @Output() inspect = new EventEmitter<{node: FlatNode; directivePosition: DirectivePosition}>();
+
+  constructor(private _messageBus: MessageBus<Events>) {}
 
   categoryOrder = [0, 1, 2];
 

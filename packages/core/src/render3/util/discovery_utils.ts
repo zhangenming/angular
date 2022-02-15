@@ -7,24 +7,31 @@
  */
 
 import {ChangeDetectionStrategy} from '../../change_detection/constants';
+import {EnvironmentInjector, InjectFlags, NgModuleRef as viewEngine_NgModuleRef, Provider, Type} from '../../core';
 import {Injector} from '../../di/injector';
+import {getInjectorDef} from '../../di/interface/defs';
+import {NullInjector} from '../../di/null_injector';
+import {walkProviderTree} from '../../di/provider_collection';
 import {ViewEncapsulation} from '../../metadata/view';
+import {deepForEach} from '../../util/array_utils';
 import {assertEqual} from '../../util/assert';
-import {assertLView} from '../assert';
-import {discoverLocalRefs, getComponentAtNodeIndex, getDirectivesAtNodeIndex, getLContext, readPatchedLView} from '../context_discovery';
+import {assertLView, assertNodeInjector} from '../assert';
+import {discoverLocalRefs, findViaComponent, findViaDirective, findViaNativeElement, getComponentAtNodeIndex, getDirectivesAtNodeIndex, getLContext, readPatchedLView} from '../context_discovery';
 import {getComponentDef, getDirectiveDef} from '../definition';
-import {NodeInjector} from '../di';
+import {getInjectorIndex, getParentInjectorLocation, injectAttributeImpl, NodeInjector} from '../di';
 import {buildDebugNode} from '../instructions/lview_debug';
-import {LContext} from '../interfaces/context';
 import {DirectiveDef} from '../interfaces/definition';
+import {NO_PARENT_INJECTOR, NodeInjectorOffset} from '../interfaces/injector';
 import {TElementNode, TNode, TNodeProviderIndexes} from '../interfaces/node';
+import {RElement} from '../interfaces/renderer_dom';
 import {isLView} from '../interfaces/type_checks';
-import {CLEANUP, CONTEXT, DebugNode, FLAGS, LView, LViewFlags, RootContext, T_HOST, TVIEW, TViewType} from '../interfaces/view';
+import {CLEANUP, CONTEXT, DebugNode, FLAGS, INJECTOR, LView, LViewFlags, RootContext, T_HOST, TVIEW, TViewType} from '../interfaces/view';
+import {NgModuleRef} from '../ng_module_ref';
 
+import {getParentInjectorIndex, getParentInjectorView} from './injector_utils';
 import {stringifyForError} from './stringify_utils';
 import {getLViewParent, getRootContext} from './view_traversal_utils';
 import {getTNode, unwrapRNode} from './view_utils';
-
 
 
 /**
@@ -241,6 +248,7 @@ export function getDirectives(node: Node): {}[] {
 export interface DirectiveDebugMetadata {
   inputs: Record<string, string>;
   outputs: Record<string, string>;
+  injectorParameters: any[]
 }
 
 /**
@@ -257,6 +265,88 @@ export interface DirectiveDebugMetadata {
 export interface ComponentDebugMetadata extends DirectiveDebugMetadata {
   encapsulation: ViewEncapsulation;
   changeDetection: ChangeDetectionStrategy;
+}
+
+function ctorParametersMetadata(directiveOrComponentInstance: any, isComponent = false) {
+  const {constructor} = directiveOrComponentInstance;
+  if (!constructor) {
+    throw new Error('Unable to find the instance constructor');
+  }
+
+  if (constructor.ctorParameters === undefined) {
+    return [];
+  }
+
+  const context = getLContext(directiveOrComponentInstance);
+  if (context === null) {
+    throw new Error('Cannot determine context from directive instance.');
+  };
+  const nodeIndex = (isComponent ? findViaComponent : findViaDirective)(
+      context.lView!, directiveOrComponentInstance);
+  const tView = context.lView![TVIEW];
+  const tNode = tView.data[nodeIndex] as TNode;
+
+  const injector = getInjector(directiveOrComponentInstance);
+  const ctorParameters = constructor?.ctorParameters?.() ?? [];
+
+  return ctorParameters.map((parameter: any) => {
+    const flags: {
+      Attribute: boolean; Inject: boolean; Self: boolean; SkipSelf: boolean; Host: boolean;
+      Optional: boolean;
+    } = {
+      Attribute: false,
+      Inject: false,
+      Self: false,
+      SkipSelf: false,
+      Host: false,
+      Optional: false
+    };
+
+    let injectionFlags = InjectFlags.Default;
+    let token = parameter.type;
+
+    for (const decorator of (parameter.decorators ?? [])) {
+      const name = decorator.type.prototype.ngMetadataName as 'Attribute' | 'Inject' | 'Self' |
+          'SkipSelf' | 'Host' | 'Optional' | undefined;
+
+      if (name === undefined) {
+        continue;
+      }
+
+      flags[name] = true;
+
+      if (name === 'Attribute' || name === 'Inject') {
+        token = decorator.args[0];
+      }
+
+      if (name === 'Self') {
+        injectionFlags |= InjectFlags.Self;
+      }
+
+      if (name === 'SkipSelf') {
+        injectionFlags |= InjectFlags.SkipSelf;
+      }
+
+      if (name === 'Host') {
+        injectionFlags |= InjectFlags.Host;
+      }
+
+      if (name === 'Optional') {
+        injectionFlags |= InjectFlags.Optional;
+      }
+    };
+
+    let value = undefined;
+    if (flags['Attribute']) {
+      value = injectAttributeImpl(tNode, token);
+    } else if (flags['Inject']) {
+      value = injector.get(token, null, injectionFlags);
+    } else {
+      value = injector.get(token, null, injectionFlags);
+    }
+
+    return {token, value, flags};
+  });
 }
 
 /**
@@ -276,6 +366,7 @@ export function getDirectiveMetadata(directiveOrComponentInstance: any): Compone
   if (!constructor) {
     throw new Error('Unable to find the instance constructor');
   }
+
   // In case a component inherits from a directive, we may have component and directive metadata
   // To ensure we don't get the metadata of the directive, we want to call `getComponentDef` first.
   const componentDef = getComponentDef(constructor);
@@ -284,15 +375,47 @@ export function getDirectiveMetadata(directiveOrComponentInstance: any): Compone
       inputs: componentDef.inputs,
       outputs: componentDef.outputs,
       encapsulation: componentDef.encapsulation,
+      injectorParameters: ctorParametersMetadata(directiveOrComponentInstance, true),
       changeDetection: componentDef.onPush ? ChangeDetectionStrategy.OnPush :
                                              ChangeDetectionStrategy.Default
     };
   }
   const directiveDef = getDirectiveDef(constructor);
   if (directiveDef) {
-    return {inputs: directiveDef.inputs, outputs: directiveDef.outputs};
+    return {
+      inputs: directiveDef.inputs,
+      outputs: directiveDef.outputs,
+      injectorParameters: ctorParametersMetadata(directiveOrComponentInstance),
+    };
   }
   return null;
+}
+
+export function getElementInjectorMetadata(element: Element) {
+  const context = getLContext(element);
+  if (context === null) return null;
+
+  const target = element as any as RElement;
+  const nodeIndex = findViaNativeElement(context.lView!, target);
+  const tView = context.lView![TVIEW];
+  const tNode = tView.data[nodeIndex] as TNode;
+  const injectorMetadata = tNode.__ngInjectorMetadata__;
+
+  return [...injectorMetadata.values()];
+}
+
+export function getInjectorMetadata(injector: EnvironmentInjector) {
+  const injectorMetadata = injector.__ngInjectorMetadata__;
+  return [...injectorMetadata.values()];
+}
+
+export function getContainerProviders(container: any) {
+  const providers: any[] = [];
+  walkProviderTree(container, (provider, providerContainer) => {
+    providers.push(provider);
+  }, [], new Set());
+
+  return providers;
 }
 
 /**
@@ -503,4 +626,366 @@ function assertDomElement(value: any) {
   if (typeof Element !== 'undefined' && !(value instanceof Element)) {
     throw new Error('Expecting instance of DOM Element');
   }
+}
+
+export function getInjectorResolutionPath(element: Element): any[]|null {
+  const context = getLContext(element);
+  if (context === null) return null;
+
+  const target = element as any as RElement;
+  const nodeIndex = findViaNativeElement(context.lView!, target);
+  const tView = context.lView![TVIEW];
+  const tNode = tView.data[nodeIndex] as TNode;
+  const injectorPath: any[] = [];
+
+  const debugNodes = getInjectorPath(context.lView!, tNode);
+
+  const debugNodeToInjector = (debugNode: any) => ({type: 'Element', owner: debugNode})
+  debugNodes.forEach((node: any) => {
+    const elementInjector = debugNodeToInjector(node);
+    injectorPath.push(elementInjector);
+  });
+
+  let injector = (context.lView![INJECTOR] as any).parentInjector;
+  let ngModuleType =
+      injector?.get?.(viewEngine_NgModuleRef, null, InjectFlags.Self)?.instance?.constructor;
+  if (ngModuleType === undefined) {
+    return injectorPath;
+  }
+
+  while (injector !== undefined) {
+    if (injector instanceof NullInjector) {
+      injectorPath.push({type: 'NullInjector', owner: injector.constructor, instance: injector});
+      break;
+    } else if (injector.scopes?.has?.('platform')) {
+      injectorPath.push({type: 'Platform', owner: injector.constructor, instance: injector});
+    } else if (injector.scopes?.has?.('environment') && injector.scopes?.has?.('root')) {
+      if (ngModuleType) {
+        injectorPath.push({type: 'Module', owner: ngModuleType, instance: injector});
+      } else {
+        injectorPath.push({type: 'Injector', owner: injector.constructor, instance: injector});
+      }
+    } else if (ngModuleType !== undefined && ngModuleType.ɵmod) {
+      injectorPath.push({type: 'Module', owner: ngModuleType, instance: injector});
+    }
+
+    injector = injector.parent;
+    const moduleRef = injector?.get?.(viewEngine_NgModuleRef, null, InjectFlags.Self);
+
+    // skip hidden AppModule
+    if (injector?.source === 'AppModule' && moduleRef === null) {
+      injector = injector.parent;
+    }
+
+    ngModuleType = moduleRef?.instance?.constructor;
+  }
+
+  return injectorPath;
+}
+
+export function traceTokenInjectorPath(element: Element, tokenToTrace: any): any[]|null {
+  if (tokenToTrace == null) return [];
+
+  const context = getLContext(element);
+  if (context === null) return null;
+
+  const target = element as any as RElement;
+  const nodeIndex = findViaNativeElement(context.lView!, target);
+  const tView = context.lView![TVIEW];
+  const tNode = tView.data[nodeIndex] as TNode;
+  const injectorPath: any[] = [];
+
+  const debugNodes = debugNodeInjectorPath(context.lView!, tNode);
+  const DEVTOOLS_NOT_FOUND = {};
+
+  const elementInjector = getInjector(element);
+
+  let isSpecialToken = false;
+
+  if (tokenToTrace.__NG_ELEMENT_ID__ !== undefined) {
+    if (typeof tokenToTrace.__NG_ELEMENT_ID__ === 'number') {
+      isSpecialToken = isSpecialToken || tokenToTrace.__NG_ELEMENT_ID__ <= -1;
+    }
+
+    if (typeof tokenToTrace.__NG_ELEMENT_ID__ === 'function') {
+      isSpecialToken = true;
+    }
+  }
+
+  for (const debugNode of debugNodes) {
+    injectorPath.push({type: 'Element', owner: (debugNode.instances[0] as any).constructor});
+    if (isSpecialToken) {
+      if (elementInjector.get(
+              tokenToTrace, DEVTOOLS_NOT_FOUND, InjectFlags.Self | InjectFlags.Optional) !==
+          DEVTOOLS_NOT_FOUND) {
+        return injectorPath;
+      }
+    } else {
+      const injector = debugNode.injector;
+      if ([...injector.providers, ...injector.viewProviders].find(
+              (provider: any) => provider === tokenToTrace || provider.provide === tokenToTrace ||
+                  provider.type === tokenToTrace)) {
+        return injectorPath;
+      }
+    }
+  }
+
+  let injector = (context.lView![INJECTOR] as any).parentInjector;
+  ;
+  let ngModuleType =
+      injector?.get?.(viewEngine_NgModuleRef, null, InjectFlags.Self)?.instance?.constructor;
+
+
+  const findImportPathForTokenInModule = (moduleConstructor: any, tokenToTrace: any) => {
+    let foundModule = false;
+    let pathCursor: any = undefined;
+    let path: any[] = [];
+
+    const traceTokenInjectorPathVisitor = (provider: any, ngModule: any) => {
+      if (foundModule) {
+        const imports = getInjectorDef(ngModule)?.imports ?? [];
+
+        if (imports.find(
+                moduleImport =>
+                    (moduleImport as any).ngModule === pathCursor || moduleImport === pathCursor)) {
+          pathCursor = ngModule;
+          path.unshift(pathCursor);
+        }
+
+        return;
+      }
+
+      const foundToken = provider === tokenToTrace || provider.provide === tokenToTrace;
+      if (foundToken) {
+        foundModule = true;
+        pathCursor = ngModule;
+        path.unshift(pathCursor);
+      }
+    };
+
+    walkProviderTree(moduleConstructor, traceTokenInjectorPathVisitor, [], new Set());
+    return path.map((owner: any, index: number) => {
+      let type = index === 0 ? 'Module' : 'ImportedModule';
+      return {type, owner};
+    });
+  };
+
+  while (injector !== undefined) {
+    if (injector instanceof NullInjector) {
+      injectorPath.push({type: 'NullInjector', owner: injector.constructor});
+      break;
+    } else if (injector.scopes?.has?.('platform')) {
+      injectorPath.push({type: 'Platform', owner: injector.constructor});
+
+      if (injector.get(tokenToTrace, DEVTOOLS_NOT_FOUND, InjectFlags.Self)) {
+        return injectorPath;
+      }
+    } else if (injector.scopes?.has?.('environment') && injector.scopes?.has?.('root')) {
+      if (injector.get(tokenToTrace, DEVTOOLS_NOT_FOUND, InjectFlags.Self)) {
+        const importPath = findImportPathForTokenInModule(ngModuleType, tokenToTrace);
+
+        injectorPath.push({
+          type: 'Module',
+          owner: ngModuleType,
+          importedFrom: importPath[importPath.length - 1],
+          importPath
+        });
+
+        return injectorPath;
+      }
+
+      injectorPath.push({type: 'Module', owner: ngModuleType});
+    } else if (ngModuleType !== undefined && ngModuleType.ɵmod) {
+      if (injector.get(tokenToTrace, DEVTOOLS_NOT_FOUND, InjectFlags.Self) !== DEVTOOLS_NOT_FOUND) {
+        const importPath = findImportPathForTokenInModule(ngModuleType, tokenToTrace);
+
+        injectorPath.push({
+          type: 'Module',
+          owner: ngModuleType,
+          importedFrom: importPath[importPath.length - 1],
+          importPath
+        });
+
+        return injectorPath;
+      }
+
+      injectorPath.push({type: 'Module', owner: ngModuleType});
+    }
+
+    injector = injector.parent;
+    const moduleRef = injector?.get?.(viewEngine_NgModuleRef, null, InjectFlags.Self);
+
+    // skip hidden AppModule
+    if (injector?.source === 'AppModule' && moduleRef === null) {
+      injector = injector.parent;
+    }
+
+    ngModuleType = moduleRef.instance.constructor;
+  }
+
+  return injectorPath;
+}
+
+
+export function traceTokenResolutionPath(tokenToTrace: any, startingInjector: any) {
+  const injectorPath: any[] = [];
+  const DEVTOOLS_NOT_FOUND = {};
+
+  let injector = startingInjector;
+  let ngModuleType =
+      injector?.get?.(viewEngine_NgModuleRef, null, InjectFlags.Self)?.instance?.constructor;
+
+  const findImportPathForTokenInModule = (moduleConstructor: any, tokenToTrace: any) => {
+    let foundModule = false;
+    let pathCursor: any = undefined;
+    let path: any[] = [];
+
+    const traceTokenInjectorPathVisitor = (provider: any, ngModule: any) => {
+      if (foundModule) {
+        const imports = getInjectorDef(ngModule)?.imports ?? [];
+
+        if (imports.find(
+                moduleImport =>
+                    (moduleImport as any).ngModule === pathCursor || moduleImport === pathCursor)) {
+          pathCursor = ngModule;
+          path.unshift(pathCursor);
+        }
+
+        return;
+      }
+
+      const foundToken = provider === tokenToTrace || provider.provide === tokenToTrace;
+      if (foundToken) {
+        foundModule = true;
+        pathCursor = ngModule;
+        path.unshift(pathCursor);
+      }
+    };
+
+    walkProviderTree(moduleConstructor, traceTokenInjectorPathVisitor, [], new Set());
+    return path.map((owner: any, index: number) => {
+      let type = index === 0 ? 'Module' : 'ImportedModule';
+      return {type, owner};
+    });
+  };
+
+  while (injector !== undefined) {
+    if (injector instanceof NullInjector) {
+      injectorPath.push({type: 'NullInjector', owner: injector.constructor});
+      break;
+    } else if (injector.scopes?.has?.('platform')) {
+      injectorPath.push({type: 'Platform', owner: injector.constructor});
+
+      if (injector.get(tokenToTrace, DEVTOOLS_NOT_FOUND, InjectFlags.Self)) {
+        return injectorPath;
+      }
+    } else if (injector.scopes?.has?.('environment') && injector.scopes?.has?.('root')) {
+      if (injector.get(tokenToTrace, DEVTOOLS_NOT_FOUND, InjectFlags.Self)) {
+        const importPath = findImportPathForTokenInModule(ngModuleType, tokenToTrace);
+
+        injectorPath.push({
+          type: 'Module',
+          owner: ngModuleType,
+          importedFrom: importPath[importPath.length - 1],
+          importPath
+        });
+
+        return injectorPath;
+      }
+
+      injectorPath.push({type: 'Module', owner: ngModuleType});
+    } else if (ngModuleType !== undefined && ngModuleType.ɵmod) {
+      if (injector.get(tokenToTrace, DEVTOOLS_NOT_FOUND, InjectFlags.Self) !== DEVTOOLS_NOT_FOUND) {
+        const importPath = findImportPathForTokenInModule(ngModuleType, tokenToTrace);
+
+        injectorPath.push({
+          type: 'Module',
+          owner: ngModuleType,
+          importedFrom: importPath[importPath.length - 1],
+          importPath
+        });
+
+        return injectorPath;
+      }
+
+      injectorPath.push({type: 'Module', owner: ngModuleType});
+    }
+
+    injector = injector.parent;
+    const moduleRef = injector?.get?.(viewEngine_NgModuleRef, null, InjectFlags.Self);
+
+    // skip hidden AppModule
+    if (injector?.source === 'AppModule' && moduleRef === null) {
+      injector = injector.parent;
+    }
+
+    ngModuleType = moduleRef.instance.constructor;
+  }
+
+  return injectorPath;
+}
+
+function getInjectorPath(lView: LView, tNode: TNode): DebugNode[] {
+  const path: any[] = [];
+  let injectorIndex = getInjectorIndex(tNode, lView);
+  if (injectorIndex === -1) {
+    // Looks like the current `TNode` does not have `NodeInjecetor` associated with it => look for
+    // parent NodeInjector.
+    const parentLocation = getParentInjectorLocation(tNode, lView);
+    if (parentLocation !== NO_PARENT_INJECTOR) {
+      // We found a parent, so start searching from the parent location.
+      injectorIndex = getParentInjectorIndex(parentLocation);
+      lView = getParentInjectorView(parentLocation, lView);
+    } else {
+      // No parents have been found, so there are no `NodeInjector`s to consult.
+    }
+  }
+
+  while (injectorIndex !== -1) {
+    ngDevMode && assertNodeInjector(lView, injectorIndex);
+    const tNode = lView[TVIEW].data[injectorIndex + NodeInjectorOffset.TNODE] as TNode;
+
+    const rawValue = lView[tNode.index];
+    const native = unwrapRNode(rawValue)
+    path.push(native);
+
+    const parentLocation = lView[injectorIndex + NodeInjectorOffset.PARENT];
+    if (parentLocation === NO_PARENT_INJECTOR) {
+      injectorIndex = -1;
+    } else {
+      injectorIndex = getParentInjectorIndex(parentLocation);
+      lView = getParentInjectorView(parentLocation, lView);
+    }
+  }
+  return path;
+}
+
+function debugNodeInjectorPath(lView: LView, tNode: TNode): DebugNode[] {
+  const path: DebugNode[] = [];
+  let injectorIndex = getInjectorIndex(tNode, lView);
+  if (injectorIndex === -1) {
+    // Looks like the current `TNode` does not have `NodeInjecetor` associated with it => look for
+    // parent NodeInjector.
+    const parentLocation = getParentInjectorLocation(tNode, lView);
+    if (parentLocation !== NO_PARENT_INJECTOR) {
+      // We found a parent, so start searching from the parent location.
+      injectorIndex = getParentInjectorIndex(parentLocation);
+      lView = getParentInjectorView(parentLocation, lView);
+    } else {
+      // No parents have been found, so there are no `NodeInjector`s to consult.
+    }
+  }
+  while (injectorIndex !== -1) {
+    ngDevMode && assertNodeInjector(lView, injectorIndex);
+    const tNode = lView[TVIEW].data[injectorIndex + NodeInjectorOffset.TNODE] as TNode;
+    path.push(buildDebugNode(tNode, lView));
+    const parentLocation = lView[injectorIndex + NodeInjectorOffset.PARENT];
+    if (parentLocation === NO_PARENT_INJECTOR) {
+      injectorIndex = -1;
+    } else {
+      injectorIndex = getParentInjectorIndex(parentLocation);
+      lView = getParentInjectorView(parentLocation, lView);
+    }
+  }
+  return path;
 }

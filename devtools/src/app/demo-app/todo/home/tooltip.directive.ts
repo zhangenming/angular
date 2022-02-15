@@ -6,11 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, HostListener} from '@angular/core';
+import {Attribute, ChangeDetectorRef, Directive, ElementRef, Host, HostListener, inject, InjectFlags, SkipSelf} from '@angular/core';
+import {ActivatedRoute} from '@angular/router';
 
-@Directive({
-  selector: '[appTooltip]',
-})
+
+@Directive({selector: '[appTooltip]', providers: []})
 export class TooltipDirective {
   visible = false;
   nested = {
@@ -21,9 +21,9 @@ export class TooltipDirective {
     },
   };
 
-  constructor() {
-    // setInterval(() => this.nested.child.grandchild.prop++, 500);
-  }
+  _ar = inject(ActivatedRoute);
+
+  constructor(@Attribute('class') private c: string, @SkipSelf() elementRef: ElementRef) {}
 
   @HostListener('click')
   handleClick(): void {
