@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, ElementRef, Inject, Injectable, InjectionToken, Injector, Input, NgModule, NgZone, OnChanges, OnDestroy, OnInit, Renderer2, SimpleChanges, ɵformatRuntimeError as formatRuntimeError, ɵRuntimeError as RuntimeError} from '@angular/core';
+import {Directive, ElementRef, Inject, Injectable, InjectionToken, Injector, Input, NgModule, NgZone, OnChanges, OnDestroy, OnInit, Renderer2, SimpleChanges, ɵRuntimeError as RuntimeError} from '@angular/core';
 
 import {DOCUMENT} from '../dom_tokens';
 import {RuntimeErrorCode} from '../errors';
@@ -267,7 +267,6 @@ export class NgOptimizedImage implements OnInit, OnChanges, OnDestroy {
   }
 }
 
-
 /**
  * NgModule that declares and exports the `NgOptimizedImage` directive.
  * This NgModule is a compatibility layer for apps that use pre-v14
@@ -426,4 +425,25 @@ function assertRequiredNumberInput(dir: NgOptimizedImage, inputValue: unknown, i
             `attribute is missing. Please specify the \`${inputName}\` attribute ` +
             `on the mentioned element.`);
   }
+}
+
+// #####################
+// Copied from /core/src/errors.ts` since the function is not exposed in
+// Angular v12, v13.
+// #####################
+
+export const ERROR_DETAILS_PAGE_BASE_URL = 'https://angular.io/errors';
+
+function formatRuntimeError<T extends number = RuntimeErrorCode>(
+    code: T, message: null|false|string): string {
+  // Error code might be a negative number, which is a special marker that instructs the logic to
+  // generate a link to the error details page on angular.io.
+  const fullCode = `NG0${Math.abs(code)}`;
+
+  let errorMessage = `${fullCode}${message ? ': ' + message : ''}`;
+
+  if (ngDevMode && code < 0) {
+    errorMessage = `${errorMessage}. Find more at ${ERROR_DETAILS_PAGE_BASE_URL}/${fullCode}`;
+  }
+  return errorMessage;
 }
