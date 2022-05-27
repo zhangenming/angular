@@ -6,9 +6,9 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {DOCUMENT} from '@angular/common';
 import {Directive, ElementRef, Inject, Injectable, InjectionToken, Injector, Input, NgModule, NgZone, OnChanges, OnDestroy, OnInit, Renderer2, SimpleChanges, ɵRuntimeError as RuntimeError} from '@angular/core';
 
-import {DOCUMENT} from '../dom_tokens';
 import {RuntimeErrorCode} from '../errors';
 
 /**
