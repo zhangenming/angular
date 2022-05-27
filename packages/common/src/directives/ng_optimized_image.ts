@@ -72,7 +72,8 @@ class LCPImageObserver implements OnDestroy {
   private window: Window|null = null;
   private observer: PerformanceObserver|null = null;
 
-  constructor(@Inject(DOCUMENT) doc: Document) {
+  constructor(injector: Injector) {
+    const doc = injector.get(DOCUMENT);
     const win = doc.defaultView;
     if (typeof win !== 'undefined' && typeof PerformanceObserver !== 'undefined') {
       this.window = win;
