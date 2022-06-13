@@ -451,7 +451,7 @@ function assertNoImageDistortion(
     const stylingDistortion = nonZeroRenderedDimensions &&
         Math.abs(intrinsicAspectRatio - renderedAspectRatio) > ASPECT_RATIO_TOLERANCE;
     if (inaccurateDimensions) {
-      console.warn(
+      console.warn(formatRuntimeError(
           RuntimeErrorCode.INVALID_INPUT,
           `${imgDirectiveDetails(dir.rawSrc)} has detected that the aspect ratio of the ` +
               `image does not match the aspect ratio indicated by the width and height attributes. ` +
@@ -459,10 +459,10 @@ function assertNoImageDistortion(
                   intrinsicAspectRatio}). ` +
               `Supplied width and height attributes: ${suppliedWidth}w x ${
                   suppliedHeight}h (aspect-ratio: ${suppliedAspectRatio}). ` +
-              `To fix this, update the width and height attributes.`);
+              `To fix this, update the width and height attributes.`));
     } else {
       if (stylingDistortion) {
-        console.warn(
+        console.warn(formatRuntimeError(
             RuntimeErrorCode.INVALID_INPUT,
             `${imgDirectiveDetails(dir.rawSrc)} has detected that the aspect ratio of the ` +
                 `rendered image does not match the image's intrinsic aspect ratio. ` +
@@ -472,7 +472,7 @@ function assertNoImageDistortion(
                     renderedAspectRatio}). ` +
                 `This issue can occur if "width" and "height" attributes are added to an image ` +
                 `without updating the corresponding image styling. In most cases, ` +
-                `adding "height: auto" or "width: auto" to the image styling will fix this issue.`);
+                `adding "height: auto" or "width: auto" to the image styling will fix this issue.`));
       }
     }
   });
@@ -508,4 +508,25 @@ function assertValidLoadingInput(dir: NgOptimizedImage) {
             `has an invalid value: expecting "lazy", "eager", or "auto" but got: ` +
             `\`${dir.loading}\`.`);
   }
+}
+
+// #####################
+// Copied from /core/src/errors.ts` since the function is not exposed in
+// Angular v12, v13.
+// #####################
+
+export const ERROR_DETAILS_PAGE_BASE_URL = 'https://angular.io/errors';
+
+function formatRuntimeError<T extends number = RuntimeErrorCode>(
+    code: T, message: null|false|string): string {
+  // Error code might be a negative number, which is a special marker that instructs the logic to
+  // generate a link to the error details page on angular.io.
+  const fullCode = `NG0${Math.abs(code)}`;
+
+  let errorMessage = `${fullCode}${message ? ': ' + message : ''}`;
+
+  if (ngDevMode && code < 0) {
+    errorMessage = `${errorMessage}. Find more at ${ERROR_DETAILS_PAGE_BASE_URL}/${fullCode}`;
+  }
+  return errorMessage;
 }

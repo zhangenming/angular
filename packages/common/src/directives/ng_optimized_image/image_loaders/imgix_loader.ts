@@ -6,9 +6,6 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ɵRuntimeError as RuntimeError} from '@angular/core';
-
-import {RuntimeErrorCode} from '../../../errors';
 import {normalizeSrc} from '../util';
 
 import {createImageLoader, ImageLoaderConfig} from './image_loader';
@@ -25,22 +22,17 @@ import {createImageLoader, ImageLoaderConfig} from './image_loader';
  *                       present in the document's `<head>`.
  * @returns Set of providers to configure the Imgix loader.
  */
-export const provideImgixLoader = createImageLoader(imgixLoaderFactory, throwInvalidPathError);
+export const provideImgixLoader =
+    createImageLoader(imgixLoaderFactory, ngDevMode ? ['https://somepath.imgix.net/'] : undefined);
 
 function imgixLoaderFactory(path: string) {
   return (config: ImageLoaderConfig) => {
     const url = new URL(`${path}/${normalizeSrc(config.src)}`);
     // This setting ensures the smallest allowable format is set.
     url.searchParams.set('auto', 'format');
-    config.width && url.searchParams.set('w', config.width.toString());
+    if (config.width) {
+      url.searchParams.set('w', config.width.toString());
+    }
     return url.href;
   };
-}
-
-function throwInvalidPathError(path: unknown): never {
-  throw new RuntimeError(
-      RuntimeErrorCode.INVALID_INPUT,
-      `ImgixLoader has detected an invalid path: ` +
-          `expecting a path like https://somepath.imgix.net/` +
-          `but got: \`${path}\``);
 }
