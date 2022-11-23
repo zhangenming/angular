@@ -149,6 +149,16 @@ function computeDeploymentsInfo(
     // These targets are responsible for building the app (and setting the theme/mode).
     // Unless deployment is skipped, exactly one primary target should be used at a time and it
     // should be the first item of the returned deploy target list.
+    'bazel-migration-testing': {
+      name: 'bazel-migration-testing',
+      type: 'primary',
+      deployEnv: 'stable',
+      projectId: 'angular-io',
+      siteId: 'bazel-migration-angular-io-site',
+      deployedUrl: 'https://bazel-migration.angular.io/',
+      preDeployActions: [pre.build, pre.checkPayloadSize],
+      postDeployActions: [post.testPwaScore],
+    },
     next: {
       name: 'next',
       type: 'primary',
@@ -312,6 +322,14 @@ function computeDeploymentsInfo(
         deploymentInfoPerTarget.redirectVersionDomainToStable,
         deploymentInfoPerTarget.redirectRcToStable,
       ];
+  }
+
+  if (currentBranch === 'aio-bazel-migration-testing') {
+    return [
+      [
+        deploymentInfoPerTarget['bazel-migration-testing'],
+      ]
+    ]
   }
 
   // If we get here, it means that the current branch is neither `main`, nor the RC or stable
