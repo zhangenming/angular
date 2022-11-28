@@ -226,8 +226,8 @@ function computeDeploymentsInfo(
       type: 'secondary',
       deployEnv: 'rc',
       projectId: 'angular-io',
-      siteId: `v${currentBranchMajorVersion}-angular-io-site`,
-      deployedUrl: `https://v${currentBranchMajorVersion}.angular.io/`,
+      siteId: `bazel-migration-angular-io-site`,
+      deployedUrl: `https://bazel-migration-angular-io-site.web.app/`,
       preDeployActions: [pre.redirectAllToRc],
       postDeployActions: [pre.undo.redirectAllToRc, post.testRedirectToRc],
     },
@@ -249,8 +249,8 @@ function computeDeploymentsInfo(
       type: 'secondary',
       deployEnv: 'stable',
       projectId: 'angular-io',
-      siteId: 'rc-angular-io-site',
-      deployedUrl: 'https://rc.angular.io/',
+      siteId: 'bazel-migration-angular-io-site',
+      deployedUrl: 'https://bazel-migration-angular-io-site.web.app/',
       preDeployActions: [pre.disableServiceWorker, pre.redirectNonFilesToStable],
       postDeployActions: [
         pre.undo.redirectNonFilesToStable,
@@ -327,7 +327,10 @@ function computeDeploymentsInfo(
   if (currentBranch === 'aio-bazel-migration-testing') {
     return [
       deploymentInfoPerTarget.bazelMigrationTesting,
-    ]
+      deploymentInfoPerTarget.redirectVersionDomainToStable,
+      deploymentInfoPerTarget.redirectRcToStable,
+  ]
+    
   }
 
   // If we get here, it means that the current branch is neither `main`, nor the RC or stable

@@ -57,7 +57,10 @@ function disableServiceWorker() {
 
   // Rename the SW manifest (`ngsw.json`). This will cause the ServiceWorker to unregister itself.
   // See https://angular.io/guide/service-worker-devops#fail-safe.
-  sh.mv(NGSW_JSON_PATH, NGSW_JSON_BAK_PATH);
+  const result = sh.mv(NGSW_JSON_PATH, NGSW_JSON_BAK_PATH);
+  console.log(result);
+  console.log(fs.existsSync(NGSW_JSON_BAK_PATH))
+  console.log(fs.statSync(NGSW_JSON_BAK_PATH).mode);
 }
 
 function escapeForRegex(str) {
@@ -120,5 +123,8 @@ function undoCheckPayloadSize() {
 
 function undoDisableServiceWorker() {
   u.logSectionHeader('Re-enable the ServiceWorker.');
-  sh.mv(NGSW_JSON_BAK_PATH, NGSW_JSON_PATH);
+  const result = sh.mv(NGSW_JSON_BAK_PATH, NGSW_JSON_PATH);
+  console.log(result);
+  console.log(fs.existsSync(NGSW_JSON_PATH))
+  console.log(fs.statSync(NGSW_JSON_PATH).mode);
 }
