@@ -651,9 +651,6 @@
     "name": "applyNodes"
   },
   {
-    "name": "applyParamDefaults"
-  },
-  {
     "name": "applyProjectionRecursive"
   },
   {
@@ -757,9 +754,6 @@
   },
   {
     "name": "copyAnimationEvent"
-  },
-  {
-    "name": "copyObj"
   },
   {
     "name": "copyStyles"
