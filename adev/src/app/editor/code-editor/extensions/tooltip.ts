@@ -10,7 +10,8 @@ import {Signal} from '@angular/core';
 import {Tooltip, hoverTooltip} from '@codemirror/view';
 import {marked} from 'marked';
 import {Subject, filter, take} from 'rxjs';
-import type {JSDocTagInfo, SymbolDisplayPart} from 'typescript';
+
+import ts from 'typescript';
 
 import {EditorFile} from '../code-mirror-editor.service';
 import {TsVfsWorkerActions} from '../workers/enums/actions';
@@ -66,7 +67,7 @@ export const getTooltipExtension = (
             dom: tooltip,
 
             // Note: force the tooltip to scroll to the top on mount and on position change
-            // because depending on the position of the mouse and the siez of the tooltip content,
+            // because depending on the position of the mouse and the size of the tooltip content,
             // the tooltip might render with its initial scroll position on the bottom
             mount: (_) => forceTooltipScrollTop(),
             positioned: (_) => forceTooltipScrollTop(),
@@ -92,12 +93,12 @@ function forceTooltipScrollTop() {
 
 function getMarkedHtmlFromString(content: string): HTMLDivElement {
   const wrapper = document.createElement('div');
-  wrapper.innerHTML = marked(content);
+  wrapper.innerHTML = marked(content) as string;
 
   return wrapper;
 }
 
-function getHtmlFromDisplayParts(displayParts: SymbolDisplayPart[]): HTMLDivElement {
+function getHtmlFromDisplayParts(displayParts: ts.SymbolDisplayPart[]): HTMLDivElement {
   const wrapper = document.createElement('div');
 
   let displayPartWrapper = document.createElement('div');
@@ -122,7 +123,7 @@ function getHtmlFromDisplayParts(displayParts: SymbolDisplayPart[]): HTMLDivElem
   return wrapper;
 }
 
-function getTagsHtml(tags: JSDocTagInfo[]): HTMLDivElement {
+function getTagsHtml(tags: ts.JSDocTagInfo[]): HTMLDivElement {
   const tagsWrapper = document.createElement('div');
 
   let contentString = '';
@@ -137,7 +138,7 @@ function getTagsHtml(tags: JSDocTagInfo[]): HTMLDivElement {
     }
   }
 
-  tagsWrapper.innerHTML = marked(contentString);
+  tagsWrapper.innerHTML = marked(contentString) as string;
 
   return tagsWrapper;
 }

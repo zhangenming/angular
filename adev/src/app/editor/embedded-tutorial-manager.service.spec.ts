@@ -8,9 +8,8 @@
 import {TestBed} from '@angular/core/testing';
 import type {FileSystemTree} from '@webcontainer/api';
 
-import type {TutorialConfig, TutorialMetadata} from '@angular/docs';
+import {type TutorialConfig, type TutorialMetadata, TutorialType} from '@angular/docs';
 import {TUTORIALS_ASSETS_WEB_PATH} from '../editor/constants';
-import {TutorialType} from '@angular/docs';
 import {EmbeddedTutorialManager} from './embedded-tutorial-manager.service';
 
 describe('EmbeddedTutorialManager', () => {
@@ -245,7 +244,7 @@ describe('EmbeddedTutorialManager', () => {
           },
         },
       };
-      
+
       const metadata: TutorialMetadata = {
         tutorialFiles: {'app.js': ''},
         openFiles: ['app.js'],
@@ -295,7 +294,6 @@ describe('EmbeddedTutorialManager', () => {
       );
     });
 
-
     it('should not set shouldReinstallDependencies if project did not change', async () => {
       const fetchMock = spyOn(window, 'fetch');
 
@@ -324,7 +322,6 @@ describe('EmbeddedTutorialManager', () => {
 
     it('should trigger shouldReInstallDependencies if new metadata has different dependencies', async () => {
       const fetchMock = spyOn(window, 'fetch');
-
 
       fetchMock
         .withArgs(`${TUTORIALS_ASSETS_WEB_PATH}/${tutorial}/source-code.json`)

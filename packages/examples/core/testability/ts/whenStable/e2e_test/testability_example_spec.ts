@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {browser, by, element} from 'protractor';
@@ -22,12 +22,12 @@ describe('testability example', () => {
   describe('using task tracking', () => {
     const URL = '/testability/whenStable/';
 
-    it('times out with a list of tasks', done => {
+    it('times out with a list of tasks', (done) => {
       browser.get(URL);
       browser.ignoreSynchronization = true;
 
       // Script that runs in the browser and calls whenStable with a timeout.
-      let waitWithResultScript = function(done: any) {
+      let waitWithResultScript = function (done: any) {
         let rootEl = document.querySelector('example-app');
         let testability = window.getAngularTestability(rootEl);
         testability.whenStable(() => {

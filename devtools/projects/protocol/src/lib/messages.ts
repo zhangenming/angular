@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {InjectionToken, InjectOptions, Injector, Type, ViewEncapsulation} from '@angular/core';
@@ -19,13 +19,23 @@ export interface ComponentType {
   id: number;
 }
 
+export type HydrationStatus =
+  | null
+  | {status: 'hydrated' | 'skipped'}
+  | {
+      status: 'mismatched';
+      expectedNodeDetails: string | null;
+      actualNodeDetails: string | null;
+    };
+
 export interface DevToolsNode<DirType = DirectiveType, CmpType = ComponentType> {
   element: string;
   directives: DirType[];
-  component: CmpType|null;
+  component: CmpType | null;
   children: DevToolsNode<DirType, CmpType>[];
   nativeElement?: Node;
   resolutionPath?: SerializedInjector[];
+  hydration: HydrationStatus;
 }
 
 export interface SerializedInjector {
@@ -38,10 +48,10 @@ export interface SerializedInjector {
 
 export interface SerializedProviderRecord {
   token: string;
-  type: 'type'|'existing'|'class'|'value'|'factory'|'multi';
+  type: 'type' | 'existing' | 'class' | 'value' | 'factory' | 'multi';
   multi: boolean;
   isViewProvider: boolean;
-  index?: number|number[];
+  index?: number | number[];
 }
 
 /**
@@ -49,11 +59,13 @@ export interface SerializedProviderRecord {
  * needing to publicly expose the interface from the framework.
  */
 export interface InjectedService {
-  token?: Type<unknown>|InjectionToken<unknown>;
+  token?: Type<unknown> | InjectionToken<unknown>;
   value: unknown;
   flags?: InjectOptions;
   providedIn: Injector;
 }
+
+export type ContainerType = 'WritableSignal' | 'ReadonlySignal' | null;
 
 export enum PropType {
   Number,
@@ -79,6 +91,7 @@ export interface Descriptor {
   editable: boolean;
   type: PropType;
   preview: string;
+  containerType: ContainerType;
 }
 
 export interface DirectivesProperties {
@@ -114,7 +127,7 @@ export interface DirectivePosition {
 }
 
 export interface NestedProp {
-  name: string|number;
+  name: string | number;
   children: NestedProp[];
 }
 
@@ -136,7 +149,7 @@ export interface SelectedPropertiesQuery {
   properties: ComponentExplorerViewProperties;
 }
 
-export type PropertyQuery = AllPropertiesQuery|SelectedPropertiesQuery;
+export type PropertyQuery = AllPropertiesQuery | SelectedPropertiesQuery;
 
 export interface ComponentExplorerViewQuery {
   selectedElement: ElementPosition;
@@ -190,14 +203,34 @@ export interface UpdatedStateData {
 }
 
 export interface Route {
-  name: string;
-  hash: string|null;
-  path: string;
-  specificity: string|null;
-  handler: string;
-  data: any;
+  name?: string;
+  hash?: string | null;
+  specificity?: string | null;
+  handler?: string;
+  pathMatch?: 'prefix' | 'full';
+  canActivateGuards?: string[] | null;
+  providers?: string[] | null;
+  title?: string;
   children?: Array<Route>;
+  data?: any;
+  path: string;
+  component: string;
+  isActive: boolean;
   isAux: boolean;
+  isLazy: boolean;
+}
+
+export interface AngularDetection {
+  // This is necessary because the runtime
+  // message listener handles messages globally
+  // including from other extensions. We don't
+  // want to set icon and/or popup based on
+  // a message coming from an unrelated extension.
+  isAngularDevTools: true;
+  isIvy: boolean;
+  isAngular: boolean;
+  isDebugMode: boolean;
+  isSupportedAngularVersion: boolean;
 }
 
 export type Topic = keyof Events;
@@ -211,8 +244,12 @@ export interface Events {
   handshake: () => void;
   shutdown: () => void;
   queryNgAvailability: () => void;
-  ngAvailability:
-      (config: {version: string|undefined|boolean; devMode: boolean; ivy: boolean}) => void;
+  ngAvailability: (config: {
+    version: string | undefined;
+    devMode: boolean;
+    ivy: boolean;
+    hydration: boolean;
+  }) => void;
 
   inspectorStart: () => void;
   inspectorEnd: () => void;
@@ -238,6 +275,9 @@ export interface Events {
   createHighlightOverlay: (position: ElementPosition) => void;
   removeHighlightOverlay: () => void;
 
+  createHydrationOverlay: () => void;
+  removeHydrationOverlay: () => void;
+
   highlightComponent: (id: number) => void;
   selectComponent: (id: number) => void;
   removeComponentHighlight: () => void;
@@ -247,8 +287,19 @@ export interface Events {
 
   // todo: type properly
   getInjectorProviders: (injector: SerializedInjector) => void;
-  latestInjectorProviders:
-      (injector: SerializedInjector, providers: SerializedProviderRecord[]) => void;
+  latestInjectorProviders: (
+    injector: SerializedInjector,
+    providers: SerializedProviderRecord[],
+  ) => void;
 
   logProvider: (injector: SerializedInjector, providers: SerializedProviderRecord) => void;
+
+  contentScriptConnected: (frameId: number, name: string, url: string) => void;
+  contentScriptDisconnected: (frameId: number, name: string, url: string) => void;
+  enableFrameConnection: (frameId: number, tabId: number) => void;
+  frameConnected: (frameId: number) => void;
+  detectAngular: (detectionResult: AngularDetection) => void;
+  backendReady: () => void;
+
+  log: (logEvent: {message: string; level: 'log' | 'warn' | 'debug' | 'error'}) => void;
 }

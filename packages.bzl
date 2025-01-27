@@ -1,15 +1,16 @@
 # Copyright Google LLC All Rights Reserved.
 #
 # Use of this source code is governed by an MIT-style license that can be
-# found in the LICENSE file at https://angular.io/license
+# found in the LICENSE file at https://angular.dev/license
 """Packages published to npm"""
-
-load("@build_bazel_rules_nodejs//internal/linker:npm_link.bzl", "npm_link")
 
 def to_package_label(package_name):
     """Get a label corresponding to the npm_package target for the package name"""
     if package_name == "angular-in-memory-web-api":
         return "//packages/misc/angular-in-memory-web-api:npm_package"
+
+    if package_name == "@angular/docs":
+        return "//adev/shared-docs:npm_package"
 
     return "//packages/{package_name}:npm_package".format(package_name = package_name.replace("@angular/", ""))
 
@@ -19,25 +20,8 @@ def _exclude_pkgs(packages, *args):
         modified_packages.remove(pkg)
     return modified_packages
 
-def link_packages(packages = []):
-    linked_packages = []
-    for package in packages:
-        pkg_name = Label(package).package
-        if pkg_name in ALL_PACKAGES:
-            name = "%s_linked" % pkg_name.replace("@angular/", "").replace("/", "_")
-            npm_link(
-                name = name,
-                target = to_package_label(pkg_name),
-                package_name = pkg_name,
-                tags = ["manual"],
-            )
-            linked_packages += [":%s" % name]
-        else:
-            linked_packages += [package]
-    return linked_packages
-
 # All framework packages published to NPM.
-ALL_PACKAGES = [
+PUBLISHED_PACKAGES = [
     "@angular/animations",
     "@angular/benchpress",
     "@angular/common",
@@ -58,14 +42,17 @@ ALL_PACKAGES = [
     "zone.js",
 ]
 
-# Packages used by integration tests
-INTEGRATION_PACKAGES = _exclude_pkgs(ALL_PACKAGES, "angular-in-memory-web-api")
+# All packages in the repository which are not published to NPM
+UNPUBLISHED_PACKAGES = [
+    "@angular/docs",
+]
 
-# Packages used by example e2e tests
-AIO_EXAMPLE_PACKAGES = _exclude_pkgs(ALL_PACKAGES, "@angular/benchpress")
+ALL_PACKAGES = PUBLISHED_PACKAGES + UNPUBLISHED_PACKAGES
+
+# Packages used by integration tests
+INTEGRATION_PACKAGES = _exclude_pkgs(PUBLISHED_PACKAGES, "angular-in-memory-web-api")
 
 # Package names under //packages that have `files_for_docgen` targets
-# including files needed for AIO doc generation.
 DOCS_ENTRYPOINTS = [
     "animations",
     "animations/browser",

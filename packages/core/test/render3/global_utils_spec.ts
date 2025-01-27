@@ -3,14 +3,29 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {setProfiler} from '@angular/core/src/render3/profiler';
-
 import {applyChanges} from '../../src/render3/util/change_detection_utils';
-import {getComponent, getContext, getDirectiveMetadata, getDirectives, getHostElement, getInjector, getListeners, getOwningComponent, getRootComponents} from '../../src/render3/util/discovery_utils';
-import {GLOBAL_PUBLISH_EXPANDO_KEY, GlobalDevModeUtils, publishDefaultGlobalUtils, publishGlobalUtil} from '../../src/render3/util/global_utils';
+import {
+  getComponent,
+  getContext,
+  getDirectiveMetadata,
+  getDirectives,
+  getHostElement,
+  getInjector,
+  getListeners,
+  getOwningComponent,
+  getRootComponents,
+} from '../../src/render3/util/discovery_utils';
+import {
+  GLOBAL_PUBLISH_EXPANDO_KEY,
+  GlobalDevModeUtils,
+  publishDefaultGlobalUtils,
+  publishGlobalUtil,
+} from '../../src/render3/util/global_utils';
+import {setProfiler} from '../../src/render3/profiler';
+import {getDeferBlocks} from '../../src/render3/util/defer';
 import {global} from '../../src/util/global';
 
 type GlobalUtilFunctions = keyof GlobalDevModeUtils['ng'];
@@ -72,6 +87,10 @@ describe('global utils', () => {
 
     it('should publish ɵsetProfiler', () => {
       assertPublished('ɵsetProfiler', setProfiler);
+    });
+
+    it('should publish ɵgetDeferBlocks', () => {
+      assertPublished('ɵgetDeferBlocks', getDeferBlocks);
     });
   });
 });
