@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {ɵresetJitOptions as resetJitOptions} from '@angular/core';
 
@@ -21,7 +21,7 @@ import {ɵresetJitOptions as resetJitOptions} from '@angular/core';
  *
  * Example:
  *
- * ```
+ * ```ts
  * describe('something', () => {
  *   it('should do something', withBody('<app-root></app-root>', async () => {
  *     const fixture = TestBed.createComponent(MyApp);
@@ -34,7 +34,10 @@ import {ɵresetJitOptions as resetJitOptions} from '@angular/core';
  * @param html HTML which should be inserted into the `body` of the `document`.
  * @param blockFn function to wrap. The function can return promise or be `async`.
  */
-export function withBody<T extends Function>(html: string, blockFn: T): T {
+export function withBody(
+  html: string,
+  blockFn: () => Promise<unknown> | void,
+): jasmine.ImplementationCallback {
   return wrapTestFn(() => document.body, html, blockFn);
 }
 
@@ -52,7 +55,7 @@ export function withBody<T extends Function>(html: string, blockFn: T): T {
  *
  * Example:
  *
- * ```
+ * ```ts
  * describe('something', () => {
  *   it('should do something', withHead('<link rel="preconnect" href="...">', async () => {
  *     // ...
@@ -63,7 +66,10 @@ export function withBody<T extends Function>(html: string, blockFn: T): T {
  * @param html HTML which should be inserted into the `head` of the `document`.
  * @param blockFn function to wrap. The function can return promise or be `async`.
  */
-export function withHead<T extends Function>(html: string, blockFn: T): T {
+export function withHead(
+  html: string,
+  blockFn: () => Promise<unknown> | void,
+): jasmine.ImplementationCallback {
   return wrapTestFn(() => document.head, html, blockFn);
 }
 
@@ -71,19 +77,15 @@ export function withHead<T extends Function>(html: string, blockFn: T): T {
  * Wraps provided function (which typically contains the code of a test) into a new function that
  * performs the necessary setup of the environment.
  */
-function wrapTestFn<T extends Function>(
-    elementGetter: () => HTMLElement, html: string, blockFn: T): T {
-  return function(done: DoneFn) {
-    if (typeof blockFn === 'function') {
-      elementGetter().innerHTML = html;
-      const blockReturn = blockFn();
-      if (blockReturn instanceof Promise) {
-        blockReturn.then(done, done.fail);
-      } else {
-        done();
-      }
-    }
-  } as any;
+function wrapTestFn(
+  elementGetter: () => HTMLElement,
+  html: string,
+  blockFn: () => Promise<unknown> | void,
+): jasmine.ImplementationCallback {
+  return () => {
+    elementGetter().innerHTML = html;
+    return blockFn();
+  };
 }
 
 /**
@@ -101,30 +103,34 @@ function wrapTestFn<T extends Function>(
  * ```
  */
 export function expectPerfCounters(expectedCounters: Partial<NgDevModePerfCounters>): void {
-  Object.keys(expectedCounters).forEach(key => {
+  Object.keys(expectedCounters).forEach((key) => {
     const expected = (expectedCounters as any)[key];
     const actual = (ngDevMode as any)[key];
     expect(actual).toBe(expected, `ngDevMode.${key}`);
   });
 }
 
-let savedDocument: Document|undefined = undefined;
-let savedRequestAnimationFrame: ((callback: FrameRequestCallback) => number)|undefined = undefined;
-let savedNode: typeof Node|undefined = undefined;
+let savedDocument: Document | undefined = undefined;
+let savedRequestAnimationFrame: ((callback: FrameRequestCallback) => number) | undefined =
+  undefined;
+let savedNode: typeof Node | undefined = undefined;
 let requestAnimationFrameCount = 0;
-let domino: typeof import('../../../platform-server/src/bundled-domino')['default']|null|undefined =
-    undefined;
+let domino:
+  | (typeof import('../../../platform-server/src/bundled-domino'))['default']
+  | null
+  | undefined = undefined;
 
-async function loadDominoOrNull():
-    Promise<typeof import('../../../platform-server/src/bundled-domino')['default']|null> {
+async function loadDominoOrNull(): Promise<
+  (typeof import('../../../platform-server/src/bundled-domino'))['default'] | null
+> {
   if (domino !== undefined) {
     return domino;
   }
 
   try {
-    return domino = (await import('../../../platform-server/src/bundled-domino')).default;
+    return (domino = (await import('../../../platform-server/src/bundled-domino')).default);
   } catch {
-    return domino = null;
+    return (domino = null);
   }
 }
 
@@ -146,14 +152,14 @@ export async function ensureDocument(): Promise<void> {
   savedDocument = (global as any).document;
   (global as any).window = window;
   (global as any).document = window.document;
-  (global as any).Event = domino.impl.Event;
   savedNode = (global as any).Node;
   // Domino types do not type `impl`, but it's a documented field.
   // See: https://www.npmjs.com/package/domino#usage.
-  (global as any).Node = (domino as typeof domino&{impl: any}).impl.Node;
+  (global as any).Event = (domino as typeof domino & {impl: any}).impl.Event;
+  (global as any).Node = (domino as typeof domino & {impl: any}).impl.Node;
 
   savedRequestAnimationFrame = (global as any).requestAnimationFrame;
-  (global as any).requestAnimationFrame = function(cb: () => void): number {
+  (global as any).requestAnimationFrame = function (cb: () => void): number {
     setImmediate(cb);
     return requestAnimationFrameCount++;
   };

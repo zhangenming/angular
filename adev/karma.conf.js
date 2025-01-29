@@ -1,7 +1,15 @@
+/**
+ * @license
+ * Copyright Google LLC All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.dev/license
+ */
+
 // Karma configuration file, see link for more information
 // https://karma-runner.github.io/1.0/config/configuration-file.html
 
-const {getAdjustedChromeBinPathForWindows} = require('../aio/tools/windows-chromium-path');
+const {getAdjustedChromeBinPathForWindows} = require('../adev/tools/windows-chromium-path');
 
 process.env.CHROME_BIN = getAdjustedChromeBinPathForWindows();
 
@@ -21,7 +29,7 @@ module.exports = function (config) {
       '/dummy/image': 'src/assets/images/logos/angular/angular.png',
     },
     client: {
-      clearContext: false,  // leave Jasmine Spec Runner output visible in browser
+      clearContext: false, // leave Jasmine Spec Runner output visible in browser
       jasmine: {
         // you can add configuration options for Jasmine here
         // the possible options are listed at https://jasmine.github.io/api/edge/Configuration.html
@@ -32,15 +40,12 @@ module.exports = function (config) {
       },
     },
     jasmineHtmlReporter: {
-      suppressAll: true // removes the duplicated traces
+      suppressAll: true, // removes the duplicated traces
     },
     coverageReporter: {
       dir: require('path').join(__dirname, './coverage/site'),
       subdir: '.',
-      reporters: [
-        { type: 'html' },
-        { type: 'text-summary' }
-      ],
+      reporters: [{type: 'html'}, {type: 'text-summary'}],
     },
     reporters: ['progress', 'kjhtml', 'jasmine-seed'],
     port: 9876,
@@ -51,7 +56,14 @@ module.exports = function (config) {
       ChromeHeadlessNoSandbox: {
         base: 'ChromeHeadless',
         // See /integration/README.md#browser-tests for more info on these args
-        flags: ['--no-sandbox', '--headless', '--disable-gpu', '--disable-dev-shm-usage', '--hide-scrollbars', '--mute-audio'],
+        flags: [
+          '--no-sandbox',
+          '--headless',
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--hide-scrollbars',
+          '--mute-audio',
+        ],
       },
     },
     browsers: ['ChromeHeadlessNoSandbox'],
