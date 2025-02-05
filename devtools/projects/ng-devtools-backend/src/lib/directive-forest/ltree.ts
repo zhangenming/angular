@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {SemVerDSL} from 'semver-dsl';
@@ -28,20 +28,19 @@ const TYPE = 1;
 const ELEMENT = 0;
 const LVIEW_TVIEW = 1;
 
-
 // Big oversimplification of the LView structure.
 type LView = Array<any>;
 
-export const isLContainer = (value: any): boolean => {
+export const isLContainer = (value: unknown): boolean => {
   return Array.isArray(value) && value[TYPE] === true;
 };
 
-const isLView = (value: any): boolean => {
+const isLView = (value: unknown): value is LView => {
   return Array.isArray(value) && typeof value[TYPE] === 'object';
 };
 
 export const METADATA_PROPERTY_NAME = '__ngContext__';
-export function getLViewFromDirectiveOrElementInstance(dir: any): null|LView {
+export function getLViewFromDirectiveOrElementInstance(dir: any): null | LView {
   if (!dir) {
     return null;
   }
@@ -78,9 +77,9 @@ export class LTreeStrategy {
     return typeof (element as any).__ngContext__ !== 'undefined';
   }
 
-  private _getNode(lView: any, data: any, idx: number): ComponentTreeNode {
+  private _getNode(lView: LView, data: any, idx: number): ComponentTreeNode {
     const directives: DirectiveInstanceType[] = [];
-    let component: ComponentInstanceType|null = null;
+    let component: ComponentInstanceType | null = null;
     const tNode = data[idx];
     const node = lView[idx][ELEMENT];
     const element = (node.tagName || node.nodeName).toLowerCase();
@@ -91,6 +90,7 @@ export class LTreeStrategy {
         element,
         directives: [],
         component: null,
+        hydration: null, // We know there is no hydration if we use the LTreeStrategy
       };
     }
     for (let i = tNode.directiveStart; i < tNode.directiveEnd; i++) {
@@ -115,6 +115,7 @@ export class LTreeStrategy {
       element,
       directives,
       component,
+      hydration: null, // We know there is no hydration if we use the LTreeStrategy
     };
   }
 

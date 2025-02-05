@@ -80,7 +80,7 @@ Default is `false`.
 ### `enableI18nLegacyMessageIdFormat`
 
 Instructs the Angular template compiler to create legacy ids for messages that are tagged in templates by the `i18n` attribute.
-See [Mark text for translations][AioGuideI18nCommonPrepareMarkTextInComponentTemplate] for more information about marking messages for localization.
+See [Mark text for translations][GuideI18nCommonPrepareMarkTextInComponentTemplate] for more information about marking messages for localization.
 
 Set this option to `false` unless your project relies upon translations that were created earlier using legacy IDs.
 Default is `true`.
@@ -213,6 +213,10 @@ See [troubleshooting template errors](tools/cli/template-typecheck#troubleshooti
 
 When you use the Angular CLI command `ng new --strict`, it is set to `true` in the new project's configuration.
 
+### `strictStandalone`
+
+When `true`, reports an error if a component, directive, or pipe is not standalone.
+
 ### `trace`
 
 When `true`, prints extra information while compiling templates.
@@ -227,4 +231,4 @@ The `ngc` command is a wrapper around TypeScript's `tsc` compiler command. The A
 
 Besides the configuration file, you can also use [`tsc` command line options](https://www.typescriptlang.org/docs/handbook/compiler-options.html) to configure `ngc`.
 
-[AioGuideI18nCommonPrepareMarkTextInComponentTemplate]: guide/i18n/prepare#mark-text-in-component-template "Mark text in component template - Prepare component for translation | Angular"
+[GuideI18nCommonPrepareMarkTextInComponentTemplate]: guide/i18n/prepare#mark-text-in-component-template "Mark text in component template - Prepare component for translation | Angular"

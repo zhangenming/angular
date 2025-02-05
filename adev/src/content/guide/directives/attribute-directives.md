@@ -63,7 +63,7 @@ The complete directive is as follows:
 
 The background color appears when the pointer hovers over the paragraph element and disappears as the pointer moves out.
 
-<img alt="Second Highlight" src="assets/content/images/guide/attribute-directives/highlight-directive-anim.gif">
+<img alt="Second Highlight" src="assets/images/guide/attribute-directives/highlight-directive-anim.gif">
 
 ## Passing values into an attribute directive
 
@@ -110,7 +110,7 @@ This section guides you through adding radio buttons to bind your color choice t
 
 1. Serve your application to verify that the user can choose the color with the radio buttons.
 
-    <img alt="Animated gif of the refactored highlight directive changing color according to the radio button the user selects" src="assets/content/images/guide/attribute-directives/highlight-directive-v2-anim.gif">
+    <img alt="Animated gif of the refactored highlight directive changing color according to the radio button the user selects" src="assets/images/guide/attribute-directives/highlight-directive-v2-anim.gif">
 
 ## Binding to a second property
 
@@ -134,7 +134,7 @@ This section guides you through configuring your application so the developer ca
 The default color is red if there is no default color binding.
 When the user chooses a color the selected color becomes the active highlight color.
 
-<img alt="Animated gif of final highlight directive that shows red color with no binding and violet with the default color set. When user selects color, the selection takes precedence." src="assets/content/images/guide/attribute-directives/highlight-directive-final-anim.gif">
+<img alt="Animated gif of final highlight directive that shows red color with no binding and violet with the default color set. When user selects color, the selection takes precedence." src="assets/images/guide/attribute-directives/highlight-directive-final-anim.gif">
 
 ## Deactivating Angular processing with `NgNonBindable`
 
@@ -143,12 +143,12 @@ To prevent expression evaluation in the browser, add `ngNonBindable` to the host
 
 In the following example, the expression `{{ 1 + 1 }}` renders just as it does in your code editor, and does not display `2`.
 
-<docs-code header="src/app/app.component.html" linenums="false" path="adev/src/content/examples/attribute-directives/src/app/app.component.html" visibleRegion="ngNonBindable"/>
+<docs-code header="src/app/app.component.html" path="adev/src/content/examples/attribute-directives/src/app/app.component.html" visibleRegion="ngNonBindable"/>
 
 Applying `ngNonBindable` to an element stops binding for that element's child elements.
 However, `ngNonBindable` still lets directives work on the element where you apply `ngNonBindable`.
 In the following example, the `appHighlight` directive is still active but Angular does not evaluate the expression `{{ 1 + 1 }}`.
 
-<docs-code header="src/app/app.component.html" linenums="false" path="adev/src/content/examples/attribute-directives/src/app/app.component.html" visibleRegion="ngNonBindable-with-directive"/>
+<docs-code header="src/app/app.component.html" path="adev/src/content/examples/attribute-directives/src/app/app.component.html" visibleRegion="ngNonBindable-with-directive"/>
 
 If you apply `ngNonBindable` to a parent element, Angular disables interpolation and binding of any sort, such as property binding or event binding, for the element's children.

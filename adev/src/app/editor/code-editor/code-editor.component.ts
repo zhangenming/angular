@@ -6,13 +6,14 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {NgFor, NgIf} from '@angular/common';
+import {Location} from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
   ElementRef,
+  EnvironmentInjector,
   OnDestroy,
   ViewChild,
   inject,
@@ -20,25 +21,43 @@ import {
 } from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatTabGroup, MatTabsModule} from '@angular/material/tabs';
-import {debounceTime, map} from 'rxjs';
+import {Title} from '@angular/platform-browser';
+import {debounceTime, from, map, switchMap} from 'rxjs';
 
 import {TerminalType} from '../terminal/terminal-handler.service';
-import {EmbeddedTutorialManager} from '../embedded-tutorial-manager.service';
 
 import {CodeMirrorEditor} from './code-mirror-editor.service';
 import {DiagnosticWithLocation, DiagnosticsState} from './services/diagnostics-state.service';
 import {DownloadManager} from '../download-manager.service';
-import {IconComponent} from '@angular/docs';
+import {StackBlitzOpener} from '../stackblitz-opener.service';
+import {ClickOutside, IconComponent} from '@angular/docs';
+import {CdkMenu, CdkMenuItem, CdkMenuTrigger} from '@angular/cdk/menu';
+import {IDXLauncher} from '../idx-launcher.service';
+import {MatTooltip} from '@angular/material/tooltip';
+import {injectEmbeddedTutorialManager} from '../inject-embedded-tutorial-manager';
 
-export const REQUIRED_FILES = new Set(['src/main.ts', 'src/index.html']);
+export const REQUIRED_FILES = new Set([
+  'src/main.ts',
+  'src/index.html',
+  'src/app/app.component.ts',
+]);
+
+const ANGULAR_DEV = 'https://angular.dev';
 
 @Component({
   selector: 'docs-tutorial-code-editor',
-  standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgIf, NgFor, MatTabsModule, IconComponent],
+  imports: [
+    MatTabsModule,
+    MatTooltip,
+    IconComponent,
+    ClickOutside,
+    CdkMenu,
+    CdkMenuItem,
+    CdkMenuTrigger,
+  ],
 })
 export class CodeEditor implements AfterViewInit, OnDestroy {
   @ViewChild('codeEditorWrapper') private codeEditorWrapperRef!: ElementRef<HTMLDivElement>;
@@ -54,12 +73,26 @@ export class CodeEditor implements AfterViewInit, OnDestroy {
     }
   }
 
+  private renameFileInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('renameFileInput') protected set setRenameFileInputRef(
+    element: ElementRef<HTMLInputElement>,
+  ) {
+    if (element) {
+      element.nativeElement.focus();
+      this.renameFileInputRef = element;
+    }
+  }
+
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly codeMirrorEditor = inject(CodeMirrorEditor);
   private readonly diagnosticsState = inject(DiagnosticsState);
   private readonly downloadManager = inject(DownloadManager);
-  private readonly embeddedTutorialManager = inject(EmbeddedTutorialManager);
+  private readonly stackblitzOpener = inject(StackBlitzOpener);
+  private readonly idxLauncher = inject(IDXLauncher);
+  private readonly title = inject(Title);
+  private readonly location = inject(Location);
+  private readonly environmentInjector = inject(EnvironmentInjector);
 
   private readonly errors$ = this.diagnosticsState.diagnostics$.pipe(
     // Display errors one second after code update
@@ -82,6 +115,7 @@ export class CodeEditor implements AfterViewInit, OnDestroy {
   readonly errors = signal<DiagnosticWithLocation[]>([]);
   readonly files = this.codeMirrorEditor.openFiles;
   readonly isCreatingFile = signal<boolean>(false);
+  readonly isRenamingFile = signal<boolean>(false);
 
   ngAfterViewInit() {
     this.codeMirrorEditor.init(this.codeEditorWrapperRef.nativeElement);
@@ -95,14 +129,34 @@ export class CodeEditor implements AfterViewInit, OnDestroy {
     this.codeMirrorEditor.disable();
   }
 
+  openCurrentSolutionInIDX(): void {
+    this.idxLauncher.openCurrentSolutionInIDX();
+  }
+  async openCurrentCodeInStackBlitz(): Promise<void> {
+    const title = this.title.getTitle();
+
+    const path = this.location.path();
+    const editorUrl = `${ANGULAR_DEV}${path}`;
+    const description = `Angular.dev example generated from [${editorUrl}](${editorUrl})`;
+
+    await this.stackblitzOpener.openCurrentSolutionInStackBlitz({title, description});
+  }
+
   async downloadCurrentCodeEditorState(): Promise<void> {
-    const name = this.embeddedTutorialManager.tutorialId();
+    const embeddedTutorialManager = await injectEmbeddedTutorialManager(this.environmentInjector);
+    const name = embeddedTutorialManager.tutorialId();
     await this.downloadManager.downloadCurrentStateOfTheSolution(name);
   }
 
   closeErrorsBox(): void {
     this.displayErrorsBox.set(false);
   }
+
+  closeRenameFile(): void {
+    this.isRenamingFile.set(false);
+  }
+
+  canRenameFile = (filename: string) => this.canDeleteFile(filename);
 
   canDeleteFile(filename: string) {
     return !REQUIRED_FILES.has(filename);
@@ -116,6 +170,37 @@ export class CodeEditor implements AfterViewInit, OnDestroy {
   onAddButtonClick() {
     this.isCreatingFile.set(true);
     this.matTabGroup.selectedIndex = this.files().length;
+  }
+
+  onRenameButtonClick() {
+    this.isRenamingFile.set(true);
+  }
+
+  async renameFile(event: SubmitEvent, oldPath: string) {
+    if (!this.renameFileInputRef) return;
+
+    event.preventDefault();
+
+    const renameFileInputValue = this.renameFileInputRef.nativeElement.value;
+
+    if (renameFileInputValue) {
+      if (renameFileInputValue.includes('..')) {
+        alert('File name can not contain ".."');
+        return;
+      }
+
+      // src is hidden from users, here we manually add it to the new filename
+      const newFile = 'src/' + renameFileInputValue;
+
+      if (this.files().find(({filename}) => filename.includes(newFile))) {
+        alert('File name already exists');
+        return;
+      }
+
+      await this.codeMirrorEditor.renameFile(oldPath, newFile);
+    }
+
+    this.isRenamingFile.set(false);
   }
 
   async createFile(event: SubmitEvent) {
@@ -153,8 +238,14 @@ export class CodeEditor implements AfterViewInit, OnDestroy {
   }
 
   private setSelectedTabOnTutorialChange() {
-    this.embeddedTutorialManager.tutorialChanged$
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    // Using `from` to prevent injecting the embedded tutorial manager once the
+    // injector is destroyed (this may happen in unit tests when the test ends
+    // before `injectAsync` runs, causing an error).
+    from(injectEmbeddedTutorialManager(this.environmentInjector))
+      .pipe(
+        switchMap((embeddedTutorialManager) => embeddedTutorialManager.tutorialChanged$),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe(() => {
         // selected file on project change is always the first
         this.matTabGroup.selectedIndex = 0;

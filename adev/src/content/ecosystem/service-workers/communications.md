@@ -28,7 +28,7 @@ The `versionUpdates` is an `Observable` property of `SwUpdate` and emits four ev
 ### Checking for updates
 
 It's possible to ask the service worker to check if any updates have been deployed to the server.
-The service worker checks for updates during initialization and on each navigation request &mdash;that is, when the user navigates from a different address to your application.
+The service worker checks for updates during initialization and on each navigation request —that is, when the user navigates from a different address to your application.
 However, you might choose to manually check for updates if you have a site that changes frequently or want updates to happen on a schedule.
 
 Do this with the `checkForUpdate()` method:
@@ -78,7 +78,7 @@ For example, imagine the following scenario:
 1. After some time, a new version of the application is deployed to the server.
     This newer version includes the files `index.html`, `main.<main-hash-2>.js` and `lazy-chunk.<lazy-hash-2>.js`.
 
-IMPORANT: The hashes are different now, because the content of the files changed. The old version is no longer available on the server.
+IMPORTANT: The hashes are different now, because the content of the files changed. The old version is no longer available on the server.
 
 1. In the meantime, the user's browser decides to evict `lazy-chunk.<lazy-hash-1>.js` from its cache.
     Browsers might decide to evict specific (or all) resources from a cache in order to reclaim disk space.

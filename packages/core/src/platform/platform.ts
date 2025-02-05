@@ -3,24 +3,37 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {publishDefaultGlobalUtils, publishSignalConfiguration} from '../application/application_ref';
+import {
+  publishDefaultGlobalUtils,
+  publishSignalConfiguration,
+} from '../application/application_ref';
 import {PLATFORM_INITIALIZER} from '../application/application_tokens';
-import {InjectionToken, Injector, StaticProvider} from '../di';
+import {
+  EnvironmentProviders,
+  InjectionToken,
+  Injector,
+  makeEnvironmentProviders,
+  runInInjectionContext,
+  StaticProvider,
+} from '../di';
 import {INJECTOR_SCOPE} from '../di/scope';
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 
-import {PLATFORM_DESTROY_LISTENERS, PlatformRef} from './platform_ref';
+import {PlatformRef} from './platform_ref';
+import {PLATFORM_DESTROY_LISTENERS} from './platform_destroy_listeners';
 
-let _platformInjector: Injector|null = null;
+let _platformInjector: Injector | null = null;
 
 /**
  * Internal token to indicate whether having multiple bootstrapped platform should be allowed (only
  * one bootstrapped platform is allowed by default). This token helps to support SSR scenarios.
  */
-export const ALLOW_MULTIPLE_PLATFORMS = new InjectionToken<boolean>('AllowMultipleToken');
+export const ALLOW_MULTIPLE_PLATFORMS = new InjectionToken<boolean>(
+  ngDevMode ? 'AllowMultipleToken' : '',
+);
 
 /**
  * Creates a platform.
@@ -31,9 +44,9 @@ export const ALLOW_MULTIPLE_PLATFORMS = new InjectionToken<boolean>('AllowMultip
 export function createPlatform(injector: Injector): PlatformRef {
   if (_platformInjector && !_platformInjector.get(ALLOW_MULTIPLE_PLATFORMS, false)) {
     throw new RuntimeError(
-        RuntimeErrorCode.MULTIPLE_PLATFORMS,
-        ngDevMode &&
-            'There can be only one platform. Destroy the previous one to create a new one.');
+      RuntimeErrorCode.MULTIPLE_PLATFORMS,
+      ngDevMode && 'There can be only one platform. Destroy the previous one to create a new one.',
+    );
   }
   publishDefaultGlobalUtils();
   publishSignalConfiguration();
@@ -55,15 +68,20 @@ export function createPlatform(injector: Injector): PlatformRef {
  * @publicApi
  */
 export function createPlatformFactory(
-    parentPlatformFactory: ((extraProviders?: StaticProvider[]) => PlatformRef)|null, name: string,
-    providers: StaticProvider[] = []): (extraProviders?: StaticProvider[]) => PlatformRef {
+  parentPlatformFactory: ((extraProviders?: StaticProvider[]) => PlatformRef) | null,
+  name: string,
+  providers: StaticProvider[] = [],
+): (extraProviders?: StaticProvider[]) => PlatformRef {
   const desc = `Platform: ${name}`;
   const marker = new InjectionToken(desc);
   return (extraProviders: StaticProvider[] = []) => {
     let platform = getPlatform();
     if (!platform || platform.injector.get(ALLOW_MULTIPLE_PLATFORMS, false)) {
-      const platformProviders: StaticProvider[] =
-          [...providers, ...extraProviders, {provide: marker, useValue: true}];
+      const platformProviders: StaticProvider[] = [
+        ...providers,
+        ...extraProviders,
+        {provide: marker, useValue: true},
+      ];
       if (parentPlatformFactory) {
         parentPlatformFactory(platformProviders);
       } else {
@@ -83,8 +101,8 @@ function createPlatformInjector(providers: StaticProvider[] = [], name?: string)
     name,
     providers: [
       {provide: INJECTOR_SCOPE, useValue: 'platform'},
-      {provide: PLATFORM_DESTROY_LISTENERS, useValue: new Set([() => _platformInjector = null])},
-      ...providers
+      {provide: PLATFORM_DESTROY_LISTENERS, useValue: new Set([() => (_platformInjector = null)])},
+      ...providers,
     ],
   });
 }
@@ -101,11 +119,14 @@ export function assertPlatform(requiredToken: any): PlatformRef {
     throw new RuntimeError(RuntimeErrorCode.PLATFORM_NOT_FOUND, ngDevMode && 'No platform exists!');
   }
 
-  if ((typeof ngDevMode === 'undefined' || ngDevMode) &&
-      !platform.injector.get(requiredToken, null)) {
+  if (
+    (typeof ngDevMode === 'undefined' || ngDevMode) &&
+    !platform.injector.get(requiredToken, null)
+  ) {
     throw new RuntimeError(
-        RuntimeErrorCode.MULTIPLE_PLATFORMS,
-        'A platform with a different configuration has been created. Please destroy it first.');
+      RuntimeErrorCode.MULTIPLE_PLATFORMS,
+      'A platform with a different configuration has been created. Please destroy it first.',
+    );
   }
 
   return platform;
@@ -116,7 +137,7 @@ export function assertPlatform(requiredToken: any): PlatformRef {
  *
  * @publicApi
  */
-export function getPlatform(): PlatformRef|null {
+export function getPlatform(): PlatformRef | null {
   return _platformInjector?.get(PlatformRef) ?? null;
 }
 
@@ -149,7 +170,32 @@ export function createOrReusePlatformInjector(providers: StaticProvider[] = []):
   return injector;
 }
 
+/**
+ * @description
+ * This function is used to provide initialization functions that will be executed upon
+ * initialization of the platform injector.
+ *
+ * Note that the provided initializer is run in the injection context.
+ *
+ * Previously, this was achieved using the `PLATFORM_INITIALIZER` token which is now deprecated.
+ *
+ * @see {@link PLATFORM_INITIALIZER}
+ *
+ * @publicApi
+ */
+export function providePlatformInitializer(initializerFn: () => void): EnvironmentProviders {
+  return makeEnvironmentProviders([
+    {
+      provide: PLATFORM_INITIALIZER,
+      useValue: initializerFn,
+      multi: true,
+    },
+  ]);
+}
+
 function runPlatformInitializers(injector: Injector): void {
   const inits = injector.get(PLATFORM_INITIALIZER, null);
-  inits?.forEach((init) => init());
+  runInInjectionContext(injector, () => {
+    inits?.forEach((init) => init());
+  });
 }

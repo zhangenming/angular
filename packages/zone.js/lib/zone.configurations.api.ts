@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 declare global {
@@ -22,7 +22,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const EventEmitter = require('events');
      * class MyEmitter extends EventEmitter {}
      * const myEmitter = new MyEmitter();
@@ -52,7 +52,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const fs = require('fs');
      *
      * const zone = Zone.current.fork({name: 'myZone'});
@@ -80,7 +80,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      * zone.run(() => {
      *   setTimeout(() => {
@@ -106,7 +106,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      * zone.run(() => {
      *   process.nextTick(() => {
@@ -132,7 +132,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const crypto = require('crypto');
      *
      * const zone = Zone.current.fork({name: 'myZone'});
@@ -182,7 +182,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const proto = Object.create(HTMLElement.prototype);
      * proto.createdCallback = function() {
      *   console.log('createdCallback is invoked in the zone', Zone.current.name);
@@ -225,7 +225,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      * zone.run(() => {
      *   div.addEventListener('click', () => {
@@ -251,7 +251,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      * zone.run(() => {
      *   setTimeout(() => {
@@ -279,7 +279,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      * zone.run(() => {
      *   requestAnimationFrame(() => {
@@ -310,7 +310,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      * zone.run(() => {
      *   queueMicrotask(() => {
@@ -342,7 +342,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      * zone.run(() => {
      *   div.addEventListener('click', () => {
@@ -382,7 +382,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      * zone.run(() => {
      *   div.onclick = () => {
@@ -407,13 +407,17 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * class TestCustomElement extends HTMLElement {
      *   constructor() { super(); }
      *   connectedCallback() {}
      *   disconnectedCallback() {}
      *   attributeChangedCallback(attrName, oldVal, newVal) {}
      *   adoptedCallback() {}
+     *   formAssociatedCallback(form) {}
+     *   formDisabledCallback(isDisabled) {}
+     *   formResetCallback() {}
+     *   formStateRestoreCallback(state, reason) {}
      * }
      *
      * const zone = Zone.fork({name: 'myZone'});
@@ -439,7 +443,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({
      *   name: 'myZone',
      *   onScheduleTask: (delegate, curr, target, task) => {
@@ -473,7 +477,7 @@ declare global {
      *
      * Consider the following examples:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({
      *   name: 'myZone'
      * });
@@ -502,7 +506,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({
      *   name: 'myZone'
      * });
@@ -529,7 +533,7 @@ declare global {
      *
      * Consider the following examples:
      *
-     * ```
+     * ```ts
      * const zone = Zone.current.fork({name: 'myZone'});
      *
      * const p = Promise.resolve(1);
@@ -564,6 +568,48 @@ declare global {
     __zone_symbol__UNPATCHED_EVENTS?: string[];
 
     /**
+     * Define a list of `on` properties to be ignored when being monkey patched by the `zone.js`.
+     *
+     * By default, `zone.js` monkey patches `on` properties on inbuilt browser classes as
+     * `WebSocket`, `XMLHttpRequest`, `Worker`, `HTMLElement` and others (see `patchTargets` in
+     * `propertyDescriptorPatch`). `on` properties may be `WebSocket.prototype.onclose`,
+     * `XMLHttpRequest.prototype.onload`, etc.
+     *
+     * Sometimes, we're not able to customise third-party libraries, which setup `on` listeners.
+     * Given a library creates a `Websocket` and sets `socket.onmessage`, this will impact
+     * performance if the `onmessage` property is set within the Angular zone, because this will
+     * trigger change detection on any message coming through the socket. We can exclude specific
+     * targets and their `on` properties from being patched by zone.js.
+     *
+     * Users can achieve this by defining `__Zone_ignore_on_properties`, it expects an array of
+     * objects where `target` is the actual object `on` properties will be set on:
+     * ```
+     * __Zone_ignore_on_properties = [
+     *   {
+     *     target: WebSocket.prototype,
+     *     ignoreProperties: ['message', 'close', 'open']
+     *   }
+     * ];
+     * ```
+     *
+     * In order to check whether `on` properties have been successfully ignored or not, it's enough
+     * to open the console in the browser, run `WebSocket.prototype` and expand the object, we
+     * should see the following:
+     * ```
+     * {
+     *   __zone_symbol__ononclosepatched: true,
+     *   __zone_symbol__ononerrorpatched: true,
+     *   __zone_symbol__ononmessagepatched: true,
+     *   __zone_symbol__ononopenpatched: true
+     * }
+     * ```
+     * These `__zone_symbol__*` properties are set by zone.js when `on` properties have been patched
+     * previously. When `__Zone_ignore_on_properties` is setup, we should not see those properties
+     * on targets.
+     */
+    __Zone_ignore_on_properties?: {target: any; ignoreProperties: string[]}[];
+
+    /**
      * Define the event names of the passive listeners.
      *
      * To add passive event listeners, you can use `elem.addEventListener('scroll', listener,
@@ -590,6 +636,15 @@ declare global {
      * trace.
      */
     __zone_symbol__DISABLE_WRAPPING_UNCAUGHT_PROMISE_REJECTION?: boolean;
+
+    /**
+     * https://github.com/angular/angular/issues/47579
+     *
+     * Enables the default `beforeunload` handling behavior, allowing the result of the event
+     * handling invocation to be set on the event's `returnValue`. The browser may then prompt
+     * the user with a string returned from the event handler.
+     */
+    __zone_symbol__enable_beforeunload?: boolean;
   }
 
   /**
@@ -661,7 +716,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * describe('jasmine.clock integration', () => {
      *   beforeEach(() => {
      *     jasmine.clock().install();
@@ -694,7 +749,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * describe('jasmine.clock integration', () => {
      *   beforeEach(() => {
      *     jasmine.clock().install();
@@ -719,7 +774,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * describe('jasmine.clock integration', () => {
      *   beforeEach(() => {
      *     jasmine.clock().install();
@@ -748,7 +803,7 @@ declare global {
      *
      * Consider the following example:
      *
-     * ```
+     * ```ts
      * describe('wait never resolved promise', () => {
      *   it('async with never resolved promise test', async(() => {
      *     const p = new Promise(() => {});

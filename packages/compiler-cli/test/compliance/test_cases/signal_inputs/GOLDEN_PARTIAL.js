@@ -13,9 +13,7 @@ TestDir.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-
 TestDir.ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "17.1.0", version: "0.0.0-PLACEHOLDER", type: TestDir, isStandalone: true, inputs: { counter: { classPropertyName: "counter", publicName: "counter", isSignal: true, isRequired: false, transformFunction: null }, name: { classPropertyName: "name", publicName: "name", isSignal: true, isRequired: true, transformFunction: null } }, ngImport: i0 });
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: TestDir, decorators: [{
             type: Directive,
-            args: [{
-                    standalone: true,
-                }]
+            args: [{}]
         }] });
 
 /****************************************************************************************************
@@ -23,8 +21,8 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class TestDir {
-    counter: import("@angular/core").InputSignal<number, number>;
-    name: import("@angular/core").InputSignal<string, string>;
+    counter: import("@angular/core").InputSignal<number>;
+    name: import("@angular/core").InputSignal<string>;
     static ɵfac: i0.ɵɵFactoryDeclaration<TestDir, never>;
     static ɵdir: i0.ɵɵDirectiveDeclaration<TestDir, never, never, { "counter": { "alias": "counter"; "required": false; "isSignal": true; }; "name": { "alias": "name"; "required": true; "isSignal": true; }; }, {}, never, never, true, never>;
 }
@@ -45,7 +43,6 @@ TestComp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "17.1.0", version: "0.0
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: TestComp, decorators: [{
             type: Component,
             args: [{
-                    standalone: true,
                     template: 'Works',
                 }]
         }] });
@@ -55,8 +52,8 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class TestComp {
-    counter: import("@angular/core").InputSignal<number, number>;
-    name: import("@angular/core").InputSignal<string, string>;
+    counter: import("@angular/core").InputSignal<number>;
+    name: import("@angular/core").InputSignal<string>;
     static ɵfac: i0.ɵɵFactoryDeclaration<TestComp, never>;
     static ɵcmp: i0.ɵɵComponentDeclaration<TestComp, "ng-component", never, { "counter": { "alias": "counter"; "required": false; "isSignal": true; }; "name": { "alias": "name"; "required": true; "isSignal": true; }; }, {}, never, never, true, never>;
 }
@@ -83,9 +80,7 @@ TestDir.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-
 TestDir.ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "17.1.0", version: "0.0.0-PLACEHOLDER", type: TestDir, isStandalone: true, inputs: { counter: { classPropertyName: "counter", publicName: "counter", isSignal: true, isRequired: false, transformFunction: null }, signalWithTransform: { classPropertyName: "signalWithTransform", publicName: "signalWithTransform", isSignal: true, isRequired: false, transformFunction: null }, signalWithTransformAndAlias: { classPropertyName: "signalWithTransformAndAlias", publicName: "publicNameSignal", isSignal: true, isRequired: false, transformFunction: null }, decoratorInput: { classPropertyName: "decoratorInput", publicName: "decoratorInput", isSignal: false, isRequired: false, transformFunction: null }, decoratorInputWithAlias: { classPropertyName: "decoratorInputWithAlias", publicName: "publicNameDecorator", isSignal: false, isRequired: false, transformFunction: null }, decoratorInputWithTransformAndAlias: { classPropertyName: "decoratorInputWithTransformAndAlias", publicName: "publicNameDecorator2", isSignal: false, isRequired: false, transformFunction: convertToBoolean } }, ngImport: i0 });
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: TestDir, decorators: [{
             type: Directive,
-            args: [{
-                    standalone: true,
-                }]
+            args: [{}]
         }], propDecorators: { decoratorInput: [{
                 type: Input
             }], decoratorInputWithAlias: [{
@@ -101,9 +96,9 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class TestDir {
-    counter: import("@angular/core").InputSignal<number, number>;
-    signalWithTransform: import("@angular/core").InputSignal<boolean, string | boolean>;
-    signalWithTransformAndAlias: import("@angular/core").InputSignal<boolean, string | boolean>;
+    counter: import("@angular/core").InputSignal<number>;
+    signalWithTransform: import("@angular/core").InputSignalWithTransform<boolean, string | boolean>;
+    signalWithTransformAndAlias: import("@angular/core").InputSignalWithTransform<boolean, string | boolean>;
     decoratorInput: boolean;
     decoratorInputWithAlias: boolean;
     decoratorInputWithTransformAndAlias: boolean;
@@ -131,9 +126,7 @@ TestDir.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-
 TestDir.ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "17.1.0", version: "0.0.0-PLACEHOLDER", type: TestDir, isStandalone: true, inputs: { name: { classPropertyName: "name", publicName: "name", isSignal: true, isRequired: true, transformFunction: null } }, ngImport: i0 });
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: TestDir, decorators: [{
             type: Directive,
-            args: [{
-                    standalone: true,
-                }]
+            args: [{}]
         }] });
 
 /****************************************************************************************************
@@ -141,7 +134,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class TestDir {
-    name: import("@angular/core").InputSignal<boolean, string | boolean>;
+    name: import("@angular/core").InputSignalWithTransform<boolean, string | boolean>;
     static ɵfac: i0.ɵɵFactoryDeclaration<TestDir, never>;
     static ɵdir: i0.ɵɵDirectiveDeclaration<TestDir, never, never, { "name": { "alias": "name"; "required": true; "isSignal": true; }; }, {}, never, never, true, never>;
 }
@@ -169,9 +162,7 @@ TestDir.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-
 TestDir.ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "17.1.0", version: "0.0.0-PLACEHOLDER", type: TestDir, isStandalone: true, inputs: { name: { classPropertyName: "name", publicName: "name", isSignal: true, isRequired: true, transformFunction: null }, name2: { classPropertyName: "name2", publicName: "name2", isSignal: true, isRequired: true, transformFunction: null }, genericTransform: { classPropertyName: "genericTransform", publicName: "genericTransform", isSignal: true, isRequired: true, transformFunction: null }, genericTransform2: { classPropertyName: "genericTransform2", publicName: "genericTransform2", isSignal: true, isRequired: true, transformFunction: null } }, ngImport: i0 });
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: TestDir, decorators: [{
             type: Directive,
-            args: [{
-                    standalone: true,
-                }]
+            args: [{}]
         }] });
 
 /****************************************************************************************************
@@ -179,10 +170,10 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class TestDir {
-    name: import("@angular/core").InputSignal<boolean, string | boolean>;
-    name2: import("@angular/core").InputSignal<boolean, string | boolean>;
-    genericTransform: import("@angular/core").InputSignal<string | number, string>;
-    genericTransform2: import("@angular/core").InputSignal<string | null, string>;
+    name: import("@angular/core").InputSignalWithTransform<boolean, string | boolean>;
+    name2: import("@angular/core").InputSignalWithTransform<boolean, string | boolean>;
+    genericTransform: import("@angular/core").InputSignalWithTransform<string | number, string>;
+    genericTransform2: import("@angular/core").InputSignalWithTransform<string | null, string>;
     static ɵfac: i0.ɵɵFactoryDeclaration<TestDir, never>;
     static ɵdir: i0.ɵɵDirectiveDeclaration<TestDir, never, never, { "name": { "alias": "name"; "required": true; "isSignal": true; }; "name2": { "alias": "name2"; "required": true; "isSignal": true; }; "genericTransform": { "alias": "genericTransform"; "required": true; "isSignal": true; }; "genericTransform2": { "alias": "genericTransform2"; "required": true; "isSignal": true; }; }, {}, never, never, true, never>;
 }

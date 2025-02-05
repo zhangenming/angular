@@ -12,9 +12,9 @@ At the end of this lesson your application will have support for routing.
 
 ## Conceptual preview of routing
 
-This tutorial introduces routing in Angular. Routing is the ability to navigate from one component in the application to another. In [Single Page Applications (SPA)](/guide/routing), only parts of the page are updated to represent the requested view for the user.
+This tutorial introduces routing in Angular. Routing is the ability to navigate from one component in the application to another. In [Single Page Applications (SPA)](guide/routing), only parts of the page are updated to represent the requested view for the user.
 
-The [Angular Router](/guide/routing) enables users to declare routes and specify which component should be displayed on the screen if that route is requested by the application.
+The [Angular Router](guide/routing) enables users to declare routes and specify which component should be displayed on the screen if that route is requested by the application.
 
 In this lesson, you will enable routing in your application to navigate to the details page.
 
@@ -49,11 +49,11 @@ In this lesson, you will enable routing in your application to navigate to the d
 
     1. Add `RouterModule` to the `@Component` metadata imports
 
-        <docs-code header="Import RouterModule in src/app/app.component.ts" path="adev/src/content/tutorials/first-app/steps/11-details-page/src/app/app.component.ts" visibleLines="[9,12]"/>
+        <docs-code header="Import RouterModule in src/app/app.component.ts" path="adev/src/content/tutorials/first-app/steps/11-details-page/src/app/app.component.ts" visibleLines="[7]"/>
 
     1. In the `template` property, replace the `<app-home></app-home>` tag with the `<router-outlet>` directive and add a link back to the home page. Your code should match this code:
 
-        <docs-code header="Add router-outlet in src/app/app.component.ts" path="adev/src/content/tutorials/first-app/steps/11-details-page/src/app/app.component.ts" visibleLines="[13,24]"/>
+        <docs-code header="Add router-outlet in src/app/app.component.ts" path="adev/src/content/tutorials/first-app/steps/11-details-page/src/app/app.component.ts" visibleLines="[8,18]"/>
 
 </docs-step>
 
