@@ -13,6 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
+            "outputHashing": "none",
             "outputPath": "dist",
             "index": "src/index.html",
             "browser": "src/main.ts",
@@ -32,7 +33,7 @@
               "extractLicenses": false
             },
             "production": {
-              "outputHashing": "all",
+              "outputHashing": "none",
               "budgets": [
                 {
                   "type": "initial",
@@ -93,7 +94,7 @@
           }
         },
         "e2e": {
-          "builder": "@angular-devkit/build-angular:protractor",
+          "builder": "@angular-devkit/build-angular:private-protractor",
           "options": {
             "protractorConfig": "e2e/protractor.conf.js",
             "devServerTarget": "cli-signal-inputs:serve",
@@ -113,5 +114,11 @@
         }
       }
     }
+  },
+  "cli": {
+    "cache": {
+      "enabled": false
+    },
+    "analytics": false
   }
 }

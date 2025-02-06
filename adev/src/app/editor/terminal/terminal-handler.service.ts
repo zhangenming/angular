@@ -7,8 +7,8 @@
  */
 
 import {Injectable} from '@angular/core';
-import {Terminal} from 'xterm';
-import {FitAddon} from 'xterm-addon-fit';
+import {Terminal} from '@xterm/xterm';
+import {FitAddon} from '@xterm/addon-fit';
 import {InteractiveTerminal} from './interactive-terminal';
 
 export enum TerminalType {
@@ -31,6 +31,13 @@ export class TerminalHandler {
       fitAddon: new FitAddon(),
     },
   } as const;
+
+  constructor() {
+    // Load fitAddon for each terminal instance
+    for (const {instance, fitAddon} of Object.values(this.terminals)) {
+      instance.loadAddon(fitAddon);
+    }
+  }
 
   get readonlyTerminalInstance(): Terminal {
     return this.terminals[TerminalType.READONLY].instance;

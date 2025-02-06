@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, computed, ElementRef, inject, signal, ViewChild} from '@angular/core';
+import {Component, computed, ElementRef, inject, signal, viewChild} from '@angular/core';
 import {SIGNAL} from '@angular/core/primitives/signals';
 
 import {SampleService} from './sample.service';
@@ -17,7 +17,7 @@ import {SampleService} from './sample.service';
   styles: [''],
 })
 export class SamplePropertiesComponent {
-  @ViewChild('elementReference') elementRef!: ElementRef;
+  readonly elementRef = viewChild<ElementRef>('elementReference');
 
   exampleService = inject(SampleService);
 
@@ -32,7 +32,11 @@ export class SamplePropertiesComponent {
   exampleObject = {name: 'John', age: 40};
   exampleArray = [1, 2, [3, 4], {name: 'John', age: 40, skills: ['JavaScript']}];
   exampleSet = new Set([1, 2, 3, 4, 5]);
-  exampleMap = new Map<unknown, unknown>([['name', 'John'], ['age', 40], [{id: 123}, undefined]]);
+  exampleMap = new Map<unknown, unknown>([
+    ['name', 'John'],
+    ['age', 40],
+    [{id: 123}, undefined],
+  ]);
   exampleDate = new Date();
   exampleFunction = () => 'John';
 
