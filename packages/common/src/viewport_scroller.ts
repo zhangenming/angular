@@ -3,15 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {inject, PLATFORM_ID, ɵɵdefineInjectable} from '@angular/core';
+import {inject, ɵɵdefineInjectable} from '@angular/core';
 
 import {DOCUMENT} from './dom_tokens';
-import {isPlatformBrowser} from './platform_id';
-
-
 
 /**
  * Defines a scroll position manager. Implemented by `BrowserViewportScroller`.
@@ -22,12 +19,13 @@ export abstract class ViewportScroller {
   // De-sugared tree-shakable injection
   // See #23917
   /** @nocollapse */
-  static ɵprov = /** @pureOrBreakMyCode */ ɵɵdefineInjectable({
+  static ɵprov = /** @pureOrBreakMyCode */ /* @__PURE__ */ ɵɵdefineInjectable({
     token: ViewportScroller,
     providedIn: 'root',
-    factory: () => isPlatformBrowser(inject(PLATFORM_ID)) ?
-        new BrowserViewportScroller(inject(DOCUMENT), window) :
-        new NullViewportScroller()
+    factory: () =>
+      typeof ngServerMode !== 'undefined' && ngServerMode
+        ? new NullViewportScroller()
+        : new BrowserViewportScroller(inject(DOCUMENT), window),
   });
 
   /**
@@ -36,7 +34,7 @@ export abstract class ViewportScroller {
    * or a function that returns the top offset position.
    *
    */
-  abstract setOffset(offset: [number, number]|(() => [number, number])): void;
+  abstract setOffset(offset: [number, number] | (() => [number, number])): void;
 
   /**
    * Retrieves the current scroll position.
@@ -61,7 +59,7 @@ export abstract class ViewportScroller {
    * See also [window.history.scrollRestoration
    * info](https://developers.google.com/web/updates/2015/09/history-api-scroll-restoration).
    */
-  abstract setHistoryScrollRestoration(scrollRestoration: 'auto'|'manual'): void;
+  abstract setHistoryScrollRestoration(scrollRestoration: 'auto' | 'manual'): void;
 }
 
 /**
@@ -70,7 +68,10 @@ export abstract class ViewportScroller {
 export class BrowserViewportScroller implements ViewportScroller {
   private offset: () => [number, number] = () => [0, 0];
 
-  constructor(private document: Document, private window: Window) {}
+  constructor(
+    private document: Document,
+    private window: Window,
+  ) {}
 
   /**
    * Configures the top offset used when scrolling to an anchor.
@@ -78,7 +79,7 @@ export class BrowserViewportScroller implements ViewportScroller {
    * or a function that returns the top offset position.
    *
    */
-  setOffset(offset: [number, number]|(() => [number, number])): void {
+  setOffset(offset: [number, number] | (() => [number, number])): void {
     if (Array.isArray(offset)) {
       this.offset = () => offset;
     } else {
@@ -131,7 +132,7 @@ export class BrowserViewportScroller implements ViewportScroller {
   /**
    * Disables automatic scroll restoration provided by the browser.
    */
-  setHistoryScrollRestoration(scrollRestoration: 'auto'|'manual'): void {
+  setHistoryScrollRestoration(scrollRestoration: 'auto' | 'manual'): void {
     this.window.history.scrollRestoration = scrollRestoration;
   }
 
@@ -150,7 +151,7 @@ export class BrowserViewportScroller implements ViewportScroller {
   }
 }
 
-function findAnchorFromDocument(document: Document, target: string): HTMLElement|null {
+function findAnchorFromDocument(document: Document, target: string): HTMLElement | null {
   const documentResult = document.getElementById(target) || document.getElementsByName(target)[0];
 
   if (documentResult) {
@@ -159,8 +160,11 @@ function findAnchorFromDocument(document: Document, target: string): HTMLElement
 
   // `getElementById` and `getElementsByName` won't pierce through the shadow DOM so we
   // have to traverse the DOM manually and do the lookup through the shadow roots.
-  if (typeof document.createTreeWalker === 'function' && document.body &&
-      typeof document.body.attachShadow === 'function') {
+  if (
+    typeof document.createTreeWalker === 'function' &&
+    document.body &&
+    typeof document.body.attachShadow === 'function'
+  ) {
     const treeWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
     let currentNode = treeWalker.currentNode as HTMLElement | null;
 
@@ -171,7 +175,7 @@ function findAnchorFromDocument(document: Document, target: string): HTMLElement
         // Note that `ShadowRoot` doesn't support `getElementsByName`
         // so we have to fall back to `querySelector`.
         const result =
-            shadowRoot.getElementById(target) || shadowRoot.querySelector(`[name="${target}"]`);
+          shadowRoot.getElementById(target) || shadowRoot.querySelector(`[name="${target}"]`);
         if (result) {
           return result;
         }
@@ -191,7 +195,7 @@ export class NullViewportScroller implements ViewportScroller {
   /**
    * Empty implementation
    */
-  setOffset(offset: [number, number]|(() => [number, number])): void {}
+  setOffset(offset: [number, number] | (() => [number, number])): void {}
 
   /**
    * Empty implementation
@@ -213,5 +217,5 @@ export class NullViewportScroller implements ViewportScroller {
   /**
    * Empty implementation
    */
-  setHistoryScrollRestoration(scrollRestoration: 'auto'|'manual'): void {}
+  setHistoryScrollRestoration(scrollRestoration: 'auto' | 'manual'): void {}
 }

@@ -9,32 +9,64 @@
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 
 import CliReferenceDetailsPage from './cli-reference-details-page.component';
-import {RouterTestingModule} from '@angular/router/testing';
-import {signal} from '@angular/core';
+import {RouterTestingHarness} from '@angular/router/testing';
 import {ReferenceScrollHandler} from '../services/reference-scroll-handler.service';
+import {provideRouter, withComponentInputBinding} from '@angular/router';
+import {provideNoopAnimations} from '@angular/platform-browser/animations';
 
 describe('CliReferenceDetailsPage', () => {
   let component: CliReferenceDetailsPage;
-  let fixture: ComponentFixture<CliReferenceDetailsPage>;
+  let fixture: ComponentFixture<unknown>;
 
   let fakeApiReferenceScrollHandler = {
     setupListeners: () => {},
-    membersMarginTopInPx: signal(0),
-    updateMembersMarginTop: () => {},
   };
+
+  const SAMPLE_CONTENT = `
+    <div class="cli">
+      <div class="docs-reference-cli-content">First column content</div>
+      <div class="docs-reference-members-container">Members content</div>
+    </div>
+  `;
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      imports: [CliReferenceDetailsPage, RouterTestingModule],
+      imports: [CliReferenceDetailsPage],
+      providers: [
+        provideNoopAnimations(),
+        provideRouter(
+          [
+            {
+              path: '**',
+              component: CliReferenceDetailsPage,
+              data: {
+                'docContent': {
+                  id: 'id',
+                  contents: SAMPLE_CONTENT,
+                },
+              },
+            },
+          ],
+          withComponentInputBinding(),
+        ),
+      ],
     });
     TestBed.overrideProvider(ReferenceScrollHandler, {useValue: fakeApiReferenceScrollHandler});
 
-    fixture = TestBed.createComponent(CliReferenceDetailsPage);
-    component = fixture.componentInstance;
+    const harness = await RouterTestingHarness.create();
+    fixture = harness.fixture;
+    component = await harness.navigateByUrl('/', CliReferenceDetailsPage);
     fixture.detectChanges();
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should load the doc content', () => {
+    expect(component.docContent()?.contents).toBeTruthy();
+
+    const docsViewer = fixture.nativeElement.querySelector('docs-viewer');
+    expect(docsViewer).toBeTruthy();
   });
 });

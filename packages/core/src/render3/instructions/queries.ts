@@ -3,16 +3,21 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ProviderToken} from '../../di';
 import {unwrapElementRef} from '../../linker/element_ref';
 import {QueryList} from '../../linker/query_list';
-import {assertNumber} from '../../util/assert';
 import {QueryFlags} from '../interfaces/query';
-import {collectQueryResults, createLQuery, createTQuery, getTQuery, loadQueryInternal, materializeViewResults, saveContentQueryAndDirectiveIndex, TQueryMetadata_} from '../query';
-import {getCurrentQueryIndex, getCurrentTNode, getLView, getTView, setCurrentQueryIndex} from '../state';
+import {
+  createContentQuery,
+  createViewQuery,
+  getQueryResults,
+  getTQuery,
+  loadQueryInternal,
+} from '../queries/query';
+import {getCurrentQueryIndex, getLView, getTView, setCurrentQueryIndex} from '../state';
 import {isCreationMode} from '../util/view_utils';
 
 /**
@@ -28,24 +33,16 @@ import {isCreationMode} from '../util/view_utils';
  * @codeGenApi
  */
 export function ɵɵcontentQuery<T>(
-    directiveIndex: number, predicate: ProviderToken<unknown>|string[], flags: QueryFlags,
-    read?: any): void {
-  ngDevMode && assertNumber(flags, 'Expecting flags');
-  const tView = getTView();
-  if (tView.firstCreatePass) {
-    const tNode = getCurrentTNode()!;
-    createTQuery(tView, new TQueryMetadata_(predicate, flags, read), tNode.index);
-    saveContentQueryAndDirectiveIndex(tView, directiveIndex);
-    if ((flags & QueryFlags.isStatic) === QueryFlags.isStatic) {
-      tView.staticContentQueries = true;
-    }
-  }
-
-  createLQuery<T>(tView, getLView(), flags);
+  directiveIndex: number,
+  predicate: ProviderToken<unknown> | string | string[],
+  flags: QueryFlags,
+  read?: any,
+): void {
+  createContentQuery<T>(directiveIndex, predicate, flags, read);
 }
 
 /**
- * Creates new QueryList, stores the reference in LView and returns QueryList.
+ * Creates a new view query by initializing internal data structures.
  *
  * @param predicate The type for which the query will search
  * @param flags Flags associated with the query
@@ -54,16 +51,11 @@ export function ɵɵcontentQuery<T>(
  * @codeGenApi
  */
 export function ɵɵviewQuery<T>(
-    predicate: ProviderToken<unknown>|string[], flags: QueryFlags, read?: any): void {
-  ngDevMode && assertNumber(flags, 'Expecting flags');
-  const tView = getTView();
-  if (tView.firstCreatePass) {
-    createTQuery(tView, new TQueryMetadata_(predicate, flags, read), -1);
-    if ((flags & QueryFlags.isStatic) === QueryFlags.isStatic) {
-      tView.staticViewQueries = true;
-    }
-  }
-  createLQuery<T>(tView, getLView(), flags);
+  predicate: ProviderToken<unknown> | string | string[],
+  flags: QueryFlags,
+  read?: any,
+): void {
+  createViewQuery(predicate, flags, read);
 }
 
 /**
@@ -83,15 +75,15 @@ export function ɵɵqueryRefresh(queryList: QueryList<any>): boolean {
   setCurrentQueryIndex(queryIndex + 1);
 
   const tQuery = getTQuery(tView, queryIndex);
-  if (queryList.dirty &&
-      (isCreationMode(lView) ===
-       ((tQuery.metadata.flags & QueryFlags.isStatic) === QueryFlags.isStatic))) {
+  if (
+    queryList.dirty &&
+    isCreationMode(lView) ===
+      ((tQuery.metadata.flags & QueryFlags.isStatic) === QueryFlags.isStatic)
+  ) {
     if (tQuery.matches === null) {
       queryList.reset([]);
     } else {
-      const result = tQuery.crossesNgTemplate ?
-          collectQueryResults(tView, lView, queryIndex, []) :
-          materializeViewResults(tView, lView, tQuery, queryIndex);
+      const result = getQueryResults(lView, queryIndex);
       queryList.reset(result, unwrapElementRef);
       queryList.notifyOnChanges();
     }

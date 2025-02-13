@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {computed, Injectable, signal} from '@angular/core';
@@ -21,7 +21,11 @@ export class SampleService {
   exampleObject = {name: 'John', age: 40};
   exampleArray = [1, 2, [3, 4], {name: 'John', age: 40, skills: ['JavaScript']}];
   exampleSet = new Set([1, 2, 3, 4, 5]);
-  exampleMap = new Map<unknown, unknown>([['name', 'John'], ['age', 40], [{id: 123}, undefined]]);
+  exampleMap = new Map<unknown, unknown>([
+    ['name', 'John'],
+    ['age', 40],
+    [{id: 123}, undefined],
+  ]);
   exampleDate = new Date();
   exampleFunction = () => 'John';
 

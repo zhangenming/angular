@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {InjectionToken} from '../di/injection_token';
 import {getDocument} from '../render3/interfaces/document';
 
 /**
- * A [DI token](guide/glossary#di-token "DI token definition") representing a string ID, used
+ * A DI token representing a string ID, used
  * primarily for prefixing application attributes and CSS styles when
  * {@link ViewEncapsulation#Emulated} is being used.
  *
@@ -18,7 +18,7 @@ import {getDocument} from '../render3/interfaces/document';
  * (for example, using `bootstrapApplication` calls). In this case, ensure that those applications
  * have different `APP_ID` value setup. For example:
  *
- * ```
+ * ```ts
  * bootstrapApplication(ComponentA, {
  *   providers: [
  *     { provide: APP_ID, useValue: 'app-a' },
@@ -39,7 +39,7 @@ import {getDocument} from '../render3/interfaces/document';
  *
  * @publicApi
  */
-export const APP_ID = new InjectionToken<string>('AppId', {
+export const APP_ID = new InjectionToken<string>(ngDevMode ? 'AppId' : '', {
   providedIn: 'root',
   factory: () => DEFAULT_APP_ID,
 });
@@ -49,39 +49,48 @@ const DEFAULT_APP_ID = 'ng';
 
 /**
  * A function that is executed when a platform is initialized.
+ *
+ * @deprecated from v19.0.0, use providePlatformInitializer instead
+ *
+ * @see {@link providePlatformInitializer}
+ *
  * @publicApi
  */
-export const PLATFORM_INITIALIZER =
-    new InjectionToken<ReadonlyArray<() => void>>('Platform Initializer');
+export const PLATFORM_INITIALIZER = new InjectionToken<ReadonlyArray<() => void>>(
+  ngDevMode ? 'Platform Initializer' : '',
+);
 
 /**
  * A token that indicates an opaque platform ID.
  * @publicApi
  */
-export const PLATFORM_ID = new InjectionToken<Object>('Platform ID', {
+export const PLATFORM_ID = new InjectionToken<Object>(ngDevMode ? 'Platform ID' : '', {
   providedIn: 'platform',
-  factory: () => 'unknown',  // set a default platform name, when none set explicitly
+  factory: () => 'unknown', // set a default platform name, when none set explicitly
 });
 
 /**
- * A [DI token](guide/glossary#di-token "DI token definition") that indicates the root directory of
+ * A DI token that indicates the root directory of
  * the application
  * @publicApi
  * @deprecated
  */
-export const PACKAGE_ROOT_URL = new InjectionToken<string>('Application Packages Root URL');
+export const PACKAGE_ROOT_URL = new InjectionToken<string>(
+  ngDevMode ? 'Application Packages Root URL' : '',
+);
 
 // We keep this token here, rather than the animations package, so that modules that only care
 // about which animations module is loaded (e.g. the CDK) can retrieve it without having to
 // include extra dependencies. See #44970 for more context.
 
 /**
- * A [DI token](guide/glossary#di-token "DI token definition") that indicates which animations
+ * A [DI token](api/core/InjectionToken) that indicates which animations
  * module has been loaded.
  * @publicApi
  */
-export const ANIMATION_MODULE_TYPE =
-    new InjectionToken<'NoopAnimations'|'BrowserAnimations'>('AnimationModuleType');
+export const ANIMATION_MODULE_TYPE = new InjectionToken<'NoopAnimations' | 'BrowserAnimations'>(
+  ngDevMode ? 'AnimationModuleType' : '',
+);
 
 // TODO(crisbeto): link to CSP guide here.
 /**
@@ -91,7 +100,7 @@ export const ANIMATION_MODULE_TYPE =
  *
  * @publicApi
  */
-export const CSP_NONCE = new InjectionToken<string|null>('CSP nonce', {
+export const CSP_NONCE = new InjectionToken<string | null>(ngDevMode ? 'CSP nonce' : '', {
   providedIn: 'root',
   factory: () => {
     // Ideally we wouldn't have to use `querySelector` here since we know that the nonce will be on
@@ -124,18 +133,20 @@ export const CSP_NONCE = new InjectionToken<string|null>('CSP nonce', {
  * - disableImageLazyLoadWarning: A boolean value. Setting this to true will
  *      disable console warnings about LCP images configured with `loading="lazy"`.
  * Learn more about the responsive image configuration in [the NgOptimizedImage
- * guide](guide/image-directive).
+ * guide](guide/image-optimization).
  * Learn more about image warning options in [the related error page](errors/NG0913).
  * @publicApi
  */
 export type ImageConfig = {
-  breakpoints?: number[],
-  disableImageSizeWarning?: boolean,
-  disableImageLazyLoadWarning?: boolean,
+  breakpoints?: number[];
+  placeholderResolution?: number;
+  disableImageSizeWarning?: boolean;
+  disableImageLazyLoadWarning?: boolean;
 };
 
 export const IMAGE_CONFIG_DEFAULTS: ImageConfig = {
   breakpoints: [16, 32, 48, 64, 96, 128, 256, 384, 640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+  placeholderResolution: 30,
   disableImageSizeWarning: false,
   disableImageLazyLoadWarning: false,
 };
@@ -149,5 +160,7 @@ export const IMAGE_CONFIG_DEFAULTS: ImageConfig = {
  * @see {@link ImageConfig}
  * @publicApi
  */
-export const IMAGE_CONFIG = new InjectionToken<ImageConfig>(
-    'ImageConfig', {providedIn: 'root', factory: () => IMAGE_CONFIG_DEFAULTS});
+export const IMAGE_CONFIG = new InjectionToken<ImageConfig>(ngDevMode ? 'ImageConfig' : '', {
+  providedIn: 'root',
+  factory: () => IMAGE_CONFIG_DEFAULTS,
+});

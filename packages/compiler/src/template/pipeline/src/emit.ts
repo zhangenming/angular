@@ -4,14 +4,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../../src/output/output_ast';
 import {ConstantPool} from '../../../constant_pool';
 import * as ir from '../ir';
 
-import {CompilationJob, CompilationJobKind as Kind, type ComponentCompilationJob, type HostBindingCompilationJob, type ViewCompilationUnit} from './compilation';
+import {
+  CompilationJob,
+  CompilationJobKind as Kind,
+  type ComponentCompilationJob,
+  type HostBindingCompilationJob,
+  type ViewCompilationUnit,
+} from './compilation';
 
 import {deleteAnyCasts} from './phases/any_cast';
 import {applyI18nExpressions} from './phases/apply_i18n_expressions';
@@ -23,7 +29,7 @@ import {collapseSingletonInterpolations} from './phases/collapse_singleton_inter
 import {generateConditionalExpressions} from './phases/conditionals';
 import {collectElementConsts} from './phases/const_collection';
 import {convertI18nBindings} from './phases/convert_i18n_bindings';
-import {createDeferDepsFns} from './phases/create_defer_deps_fns';
+import {resolveDeferDepsFns} from './phases/resolve_defer_deps_fns';
 import {createI18nContexts} from './phases/create_i18n_contexts';
 import {deduplicateTextBindings} from './phases/deduplicate_text_bindings';
 import {configureDeferInstructions} from './phases/defer_configs';
@@ -63,27 +69,34 @@ import {resolveI18nElementPlaceholders} from './phases/resolve_i18n_element_plac
 import {resolveI18nExpressionPlaceholders} from './phases/resolve_i18n_expression_placeholders';
 import {resolveNames} from './phases/resolve_names';
 import {resolveSanitizers} from './phases/resolve_sanitizers';
+import {transformTwoWayBindingSet} from './phases/transform_two_way_binding_set';
 import {saveAndRestoreView} from './phases/save_restore_view';
 import {allocateSlots} from './phases/slot_allocation';
 import {specializeStyleBindings} from './phases/style_binding_specialization';
 import {generateTemporaryVariables} from './phases/temporary_variables';
-import {generateTrackFns} from './phases/track_fn_generation';
 import {optimizeTrackFns} from './phases/track_fn_optimization';
 import {generateTrackVariables} from './phases/track_variables';
 import {countVariables} from './phases/var_counting';
 import {optimizeVariables} from './phases/variable_optimization';
 import {wrapI18nIcus} from './phases/wrap_icus';
+import {optimizeStoreLet} from './phases/store_let_optimization';
+import {removeIllegalLetReferences} from './phases/remove_illegal_let_references';
+import {generateLocalLetReferences} from './phases/generate_local_let_references';
+import {attachSourceLocations} from './phases/attach_source_locations';
 
-type Phase = {
-  fn: (job: CompilationJob) => void; kind: Kind.Both | Kind.Host | Kind.Tmpl;
-}|{
-  fn: (job: ComponentCompilationJob) => void;
-  kind: Kind.Tmpl;
-}
-|{
-  fn: (job: HostBindingCompilationJob) => void;
-  kind: Kind.Host;
-};
+type Phase =
+  | {
+      fn: (job: CompilationJob) => void;
+      kind: Kind.Both | Kind.Host | Kind.Tmpl;
+    }
+  | {
+      fn: (job: ComponentCompilationJob) => void;
+      kind: Kind.Tmpl;
+    }
+  | {
+      fn: (job: HostBindingCompilationJob) => void;
+      kind: Kind.Host;
+    };
 
 const phases: Phase[] = [
   {kind: Kind.Tmpl, fn: removeContentSelectors},
@@ -111,13 +124,16 @@ const phases: Phase[] = [
   {kind: Kind.Tmpl, fn: createVariadicPipes},
   {kind: Kind.Both, fn: generatePureLiteralStructures},
   {kind: Kind.Tmpl, fn: generateProjectionDefs},
+  {kind: Kind.Tmpl, fn: generateLocalLetReferences},
   {kind: Kind.Tmpl, fn: generateVariables},
   {kind: Kind.Tmpl, fn: saveAndRestoreView},
   {kind: Kind.Both, fn: deleteAnyCasts},
   {kind: Kind.Both, fn: resolveDollarEvent},
   {kind: Kind.Tmpl, fn: generateTrackVariables},
+  {kind: Kind.Tmpl, fn: removeIllegalLetReferences},
   {kind: Kind.Both, fn: resolveNames},
   {kind: Kind.Tmpl, fn: resolveDeferTargetNames},
+  {kind: Kind.Tmpl, fn: transformTwoWayBindingSet},
   {kind: Kind.Tmpl, fn: optimizeTrackFns},
   {kind: Kind.Both, fn: resolveContexts},
   {kind: Kind.Both, fn: resolveSanitizers},
@@ -125,23 +141,24 @@ const phases: Phase[] = [
   {kind: Kind.Both, fn: generateNullishCoalesceExpressions},
   {kind: Kind.Both, fn: expandSafeReads},
   {kind: Kind.Both, fn: generateTemporaryVariables},
+  {kind: Kind.Both, fn: optimizeVariables},
+  {kind: Kind.Both, fn: optimizeStoreLet},
   {kind: Kind.Tmpl, fn: allocateSlots},
-  {kind: Kind.Tmpl, fn: createDeferDepsFns},
   {kind: Kind.Tmpl, fn: resolveI18nElementPlaceholders},
   {kind: Kind.Tmpl, fn: resolveI18nExpressionPlaceholders},
   {kind: Kind.Tmpl, fn: extractI18nMessages},
-  {kind: Kind.Tmpl, fn: generateTrackFns},
   {kind: Kind.Tmpl, fn: collectI18nConsts},
   {kind: Kind.Tmpl, fn: collectConstExpressions},
   {kind: Kind.Both, fn: collectElementConsts},
   {kind: Kind.Tmpl, fn: removeI18nContexts},
   {kind: Kind.Both, fn: countVariables},
   {kind: Kind.Tmpl, fn: generateAdvance},
-  {kind: Kind.Both, fn: optimizeVariables},
   {kind: Kind.Both, fn: nameFunctionsAndVariables},
+  {kind: Kind.Tmpl, fn: resolveDeferDepsFns},
   {kind: Kind.Tmpl, fn: mergeNextContextExpressions},
   {kind: Kind.Tmpl, fn: generateNgContainerOps},
   {kind: Kind.Tmpl, fn: collapseEmptyInstructions},
+  {kind: Kind.Tmpl, fn: attachSourceLocations},
   {kind: Kind.Tmpl, fn: disableBindings},
   {kind: Kind.Both, fn: extractPureFunctions},
   {kind: Kind.Both, fn: reify},
@@ -198,16 +215,22 @@ function emitView(view: ViewCompilationUnit): o.FunctionExpr {
   const createStatements: o.Statement[] = [];
   for (const op of view.create) {
     if (op.kind !== ir.OpKind.Statement) {
-      throw new Error(`AssertionError: expected all create ops to have been compiled, but got ${
-          ir.OpKind[op.kind]}`);
+      throw new Error(
+        `AssertionError: expected all create ops to have been compiled, but got ${
+          ir.OpKind[op.kind]
+        }`,
+      );
     }
     createStatements.push(op.statement);
   }
   const updateStatements: o.Statement[] = [];
   for (const op of view.update) {
     if (op.kind !== ir.OpKind.Statement) {
-      throw new Error(`AssertionError: expected all update ops to have been compiled, but got ${
-          ir.OpKind[op.kind]}`);
+      throw new Error(
+        `AssertionError: expected all update ops to have been compiled, but got ${
+          ir.OpKind[op.kind]
+        }`,
+      );
     }
     updateStatements.push(op.statement);
   }
@@ -215,15 +238,12 @@ function emitView(view: ViewCompilationUnit): o.FunctionExpr {
   const createCond = maybeGenerateRfBlock(1, createStatements);
   const updateCond = maybeGenerateRfBlock(2, updateStatements);
   return o.fn(
-      [
-        new o.FnParam('rf'),
-        new o.FnParam('ctx'),
-      ],
-      [
-        ...createCond,
-        ...updateCond,
-      ],
-      /* type */ undefined, /* sourceSpan */ undefined, view.fnName);
+    [new o.FnParam('rf'), new o.FnParam('ctx')],
+    [...createCond, ...updateCond],
+    /* type */ undefined,
+    /* sourceSpan */ undefined,
+    view.fnName,
+  );
 }
 
 function maybeGenerateRfBlock(flag: number, statements: o.Statement[]): o.Statement[] {
@@ -233,12 +253,13 @@ function maybeGenerateRfBlock(flag: number, statements: o.Statement[]): o.Statem
 
   return [
     o.ifStmt(
-        new o.BinaryOperatorExpr(o.BinaryOperator.BitwiseAnd, o.variable('rf'), o.literal(flag)),
-        statements),
+      new o.BinaryOperatorExpr(o.BinaryOperator.BitwiseAnd, o.variable('rf'), o.literal(flag)),
+      statements,
+    ),
   ];
 }
 
-export function emitHostBindingFunction(job: HostBindingCompilationJob): o.FunctionExpr|null {
+export function emitHostBindingFunction(job: HostBindingCompilationJob): o.FunctionExpr | null {
   if (job.root.fnName === null) {
     throw new Error(`AssertionError: host binding function is unnamed`);
   }
@@ -246,16 +267,22 @@ export function emitHostBindingFunction(job: HostBindingCompilationJob): o.Funct
   const createStatements: o.Statement[] = [];
   for (const op of job.root.create) {
     if (op.kind !== ir.OpKind.Statement) {
-      throw new Error(`AssertionError: expected all create ops to have been compiled, but got ${
-          ir.OpKind[op.kind]}`);
+      throw new Error(
+        `AssertionError: expected all create ops to have been compiled, but got ${
+          ir.OpKind[op.kind]
+        }`,
+      );
     }
     createStatements.push(op.statement);
   }
   const updateStatements: o.Statement[] = [];
   for (const op of job.root.update) {
     if (op.kind !== ir.OpKind.Statement) {
-      throw new Error(`AssertionError: expected all update ops to have been compiled, but got ${
-          ir.OpKind[op.kind]}`);
+      throw new Error(
+        `AssertionError: expected all update ops to have been compiled, but got ${
+          ir.OpKind[op.kind]
+        }`,
+      );
     }
     updateStatements.push(op.statement);
   }
@@ -267,13 +294,10 @@ export function emitHostBindingFunction(job: HostBindingCompilationJob): o.Funct
   const createCond = maybeGenerateRfBlock(1, createStatements);
   const updateCond = maybeGenerateRfBlock(2, updateStatements);
   return o.fn(
-      [
-        new o.FnParam('rf'),
-        new o.FnParam('ctx'),
-      ],
-      [
-        ...createCond,
-        ...updateCond,
-      ],
-      /* type */ undefined, /* sourceSpan */ undefined, job.root.fnName);
+    [new o.FnParam('rf'), new o.FnParam('ctx')],
+    [...createCond, ...updateCond],
+    /* type */ undefined,
+    /* sourceSpan */ undefined,
+    job.root.fnName,
+  );
 }

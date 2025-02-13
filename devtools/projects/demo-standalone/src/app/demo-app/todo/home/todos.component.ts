@@ -3,11 +3,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgForOf} from '@angular/common';
-import {ChangeDetectorRef, Component, EventEmitter, OnDestroy, OnInit, Output, Pipe, PipeTransform} from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  OnDestroy,
+  OnInit,
+  Output,
+  Pipe,
+  PipeTransform,
+} from '@angular/core';
 import {RouterLink} from '@angular/router';
 
 import {SamplePipe} from './sample.pipe';
@@ -20,7 +29,7 @@ export const enum TodoFilter {
   Active = 'active',
 }
 
-@Pipe({pure: false, name: 'todosFilter', standalone: true})
+@Pipe({pure: false, name: 'todosFilter'})
 export class TodosFilter implements PipeTransform {
   transform(todos: Todo[], filter: TodoFilter): Todo[] {
     return (todos || []).filter((t) => {
@@ -48,7 +57,6 @@ const fib = (n: number): number => {
 @Component({
   selector: 'app-todos',
   imports: [RouterLink, TodoComponent, SamplePipe, TodosFilter, TooltipDirective],
-  standalone: true,
   template: `
     <a [routerLink]="">Home</a>
     <a [routerLink]="">Home</a>
@@ -57,19 +65,25 @@ const fib = (n: number): number => {
     <section class="todoapp">
       <header class="header">
         <h1>todos</h1>
-        <input (keydown.enter)="addTodo(input)" #input class="new-todo" placeholder="What needs to be done?" autofocus />
+        <input
+          (keydown.enter)="addTodo(input)"
+          #input
+          class="new-todo"
+          placeholder="What needs to be done?"
+          autofocus
+        />
       </header>
       <section class="main">
         <input id="toggle-all" class="toggle-all" type="checkbox" />
         <label for="toggle-all">Mark all as complete</label>
         <ul class="todo-list">
           @for (todo of todos | todosFilter: filterValue; track todo) {
-            <app-todo
-              appTooltip
-              [todo]="todo"
-              (delete)="onDelete($event)"
-              (update)="onChange($event)"
-            />
+          <app-todo
+            appTooltip
+            [todo]="todo"
+            (delete)="onDelete($event)"
+            (update)="onChange($event)"
+          />
           }
         </ul>
       </section>
@@ -80,7 +94,7 @@ const fib = (n: number): number => {
         <button class="clear-completed" (click)="clearCompleted()">Clear completed</button>
       </footer>
     </section>
-    `
+  `,
 })
 export class TodosComponent implements OnInit, OnDestroy {
   todos: Todo[] = [

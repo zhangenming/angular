@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {DirectiveProfile, ElementProfile, LifecycleProfile, ProfilerFrame} from 'protocol';
 
-const mergeProperty = (mergeInProp: number|undefined, value: number|undefined) => {
+const mergeProperty = (mergeInProp: number | undefined, value: number | undefined) => {
   if (mergeInProp === undefined) {
     return value;
   }
@@ -52,11 +52,11 @@ const mergeFrame = (mergeIn: ProfilerFrame, second: ProfilerFrame) => {
   mergeDirectives(mergeIn.directives, second.directives);
 };
 
-export const mergeFrames = (frames: ProfilerFrame[]): ProfilerFrame|null => {
+export const mergeFrames = (frames: ProfilerFrame[]): ProfilerFrame | null => {
   if (!frames || !frames.length) {
     return null;
   }
-  const first = JSON.parse(JSON.stringify(frames[0]));
+  const first = JSON.parse(JSON.stringify(frames[0])) as ProfilerFrame;
   for (let i = 1; i < frames.length; i++) {
     mergeFrame(first, frames[i]);
   }

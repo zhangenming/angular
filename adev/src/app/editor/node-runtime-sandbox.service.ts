@@ -7,12 +7,10 @@
  */
 
 import {DestroyRef, inject, Injectable, signal} from '@angular/core';
-import {checkFilesInDirectory} from '@angular/docs';
 import {FileSystemTree, WebContainer, WebContainerProcess} from '@webcontainer/api';
 import {BehaviorSubject, filter, map, Subject} from 'rxjs';
 
-import type {FileAndContent} from '@angular/docs';
-import {TutorialType} from '@angular/docs';
+import {type FileAndContent, TutorialType, checkFilesInDirectory} from '@angular/docs';
 
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {AlertManager} from './alert-manager.service';
@@ -26,7 +24,7 @@ export const DEV_SERVER_READY_MSG = 'Watch mode enabled. Watching for file chang
 export const OUT_OF_MEMORY_MSG = 'Out of memory';
 
 const enum PROCESS_EXIT_CODE {
-  SUCCESS = 0, // process exited succesfully
+  SUCCESS = 0, // process exited successfully
   ERROR = 10, // process exited with error
   SIGTERM = 143, // 143 = gracefully terminated by SIGTERM, e.g. Ctrl + C
 }
@@ -73,7 +71,7 @@ export class NodeRuntimeSandbox {
   }
 
   async init(): Promise<void> {
-    // Note: the error state can already be set when loading the NodeRuntimeSanbox
+    // Note: the error state can already be set when loading the NodeRuntimeSandbox
     // in an unsupported environment.
     if (this.nodeRuntimeState.error()) {
       return;
@@ -107,7 +105,10 @@ export class NodeRuntimeSandbox {
 
       console.timeEnd('Load time');
     } catch (error: any) {
-      this.setErrorState(error.message);
+      // If we're already in an error state, throw away the most recent error which may have happened because
+      // we were in the error state already and tried to do more things after terminating.
+      const message = this.nodeRuntimeState.error()?.message ?? error.message;
+      this.setErrorState(message);
     }
   }
 
@@ -142,12 +143,20 @@ export class NodeRuntimeSandbox {
   async getSolutionFiles(): Promise<FileAndContent[]> {
     const webContainer = await this.webContainerPromise!;
 
-    const excludeFolders = ['node_modules', '.angular', 'dist'];
+    const excludeFromRoot = [
+      'node_modules',
+      '.angular',
+      'dist',
+      'BUILD.bazel',
+      'idx',
+      'package.json.template',
+      'config.json',
+    ];
 
     return await checkFilesInDirectory(
-      '/',
+      '',
       webContainer.fs,
-      (path?: string) => !!path && !excludeFolders.includes(path),
+      (path: string) => !excludeFromRoot.includes(path),
     );
   }
 
@@ -155,7 +164,7 @@ export class NodeRuntimeSandbox {
    * Initialize the WebContainer for an Angular project
    */
   private async initProject(): Promise<void> {
-    // prevent re-initializion
+    // prevent re-initialization
     if (this._isProjectInitialized()) return;
 
     // clean up the sandbox if it was initialized before so that the CLI can
@@ -230,7 +239,7 @@ export class NodeRuntimeSandbox {
    * Initialize the WebContainer for the Angular CLI
    */
   private async initAngularCli() {
-    // prevent re-initializion
+    // prevent re-initialization
     if (this._isAngularCliInitialized()) return;
 
     // clean up the sandbox if a project was initialized before so the CLI can
@@ -250,7 +259,7 @@ export class NodeRuntimeSandbox {
       this.setLoading(LoadingStep.READY);
   }
 
-  async writeFile(path: string, content: string | Buffer): Promise<void> {
+  async writeFile(path: string, content: string | Uint8Array): Promise<void> {
     const webContainer = await this.webContainerPromise!;
 
     try {
@@ -267,6 +276,16 @@ export class NodeRuntimeSandbox {
       } else {
         throw err;
       }
+    }
+  }
+
+  async renameFile(oldPath: string, newPath: string): Promise<void> {
+    const webContainer = await this.webContainerPromise!;
+
+    try {
+      await webContainer.fs.rename(oldPath, newPath);
+    } catch (err: any) {
+      throw err;
     }
   }
 
@@ -292,7 +311,7 @@ export class NodeRuntimeSandbox {
 
     const terminal = this.terminalHandler.interactiveTerminalInstance;
 
-    // use WebContainer spawn directly so that the proccess isn't killed on
+    // use WebContainer spawn directly so that the process isn't killed on
     // cleanup
     const shellProcess = await webContainer.spawn('bash');
 
@@ -372,7 +391,9 @@ export class NodeRuntimeSandbox {
     this.setLoading(LoadingStep.BOOT);
 
     if (!this.webContainerPromise) {
-      this.webContainerPromise = WebContainer.boot();
+      this.webContainerPromise = WebContainer.boot({
+        workdirName: 'angular',
+      });
     }
     return await this.webContainerPromise;
   }
@@ -516,10 +537,10 @@ export class NodeRuntimeSandbox {
 
   /**
    * Kill existing processes and remove files from the WebContainer
-   * when switching tutorials that have diferent requirements
+   * when switching tutorials that have different requirements
    */
   private async cleanup() {
-    // await the proccess to be killed before removing the files because
+    // await the process to be killed before removing the files because
     // a process can create files during the promise
     await this.killExistingProcesses();
     await this.removeFiles();

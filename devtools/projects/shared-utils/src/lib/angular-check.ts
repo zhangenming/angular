@@ -3,8 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
+
+import {ɵHydratedNode as HydrationNode} from '@angular/core';
 
 declare const ng: any;
 
@@ -43,14 +45,22 @@ export const appIsSupportedAngularVersion = (): boolean => {
  * @returns if the app has global ng debug object
  */
 const appHasGlobalNgDebugObject = (): boolean => {
-  return typeof ng === 'object' &&
-      (typeof ng.getComponent === 'function' || typeof ng.probe === 'function');
+  return (
+    typeof ng === 'object' &&
+    (typeof ng.getComponent === 'function' || typeof ng.probe === 'function')
+  );
 };
 
-export const getAngularVersion = (): string|null => {
+export const getAngularVersion = (): string | null => {
   const el = document.querySelector('[ng-version]');
   if (!el) {
     return null;
   }
   return el.getAttribute('ng-version');
 };
+
+export function isHydrationEnabled(): boolean {
+  return Array.from(document.querySelectorAll('[ng-version]')).some(
+    (rootNode) => (rootNode as HydrationNode)?.__ngDebugHydrationInfo__,
+  );
+}

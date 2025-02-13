@@ -32,7 +32,7 @@
     "lib": ["es2020", "dom", "dom.iterable"],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,
-    "types": ["angular", "dom-navigation"]
+    "types": ["angular"]
   },
   "bazelOptions": {
     "suppressTsconfigOverrideWarnings": true
@@ -50,6 +50,6 @@
     // will be removed eventually. See: FW-1392.
     "http/**",
     "language-service/ivy/test/legacy/project",
-    "platform-server/integrationtest",
+    "platform-server/integrationtest"
   ]
 }

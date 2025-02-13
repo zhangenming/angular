@@ -1,7 +1,7 @@
-load("//devtools/tools:ng_module.bzl", "ng_module")
 load("@io_bazel_rules_sass//:defs.bzl", "sass_binary")
-load("//devtools/tools:typescript.bzl", "ts_test_library")
 load("//devtools/tools:defaults.bzl", "karma_web_test_suite")
+load("//devtools/tools:ng_module.bzl", "ng_module")
+load("//devtools/tools:typescript.bzl", "ts_test_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -14,15 +14,15 @@ ng_module(
     name = "devtools-tabs",
     srcs = [
         "devtools-tabs.component.ts",
-        "devtools-tabs.module.ts",
     ],
     angular_assets = [
         "devtools-tabs.component.html",
         ":devtools_tabs_component_styles",
     ],
     deps = [
-        "//devtools/projects/ng-devtools/src/lib:theme",
         "//devtools/projects/ng-devtools/src/lib/application-environment",
+        "//devtools/projects/ng-devtools/src/lib/application-services:frame_manager",
+        "//devtools/projects/ng-devtools/src/lib/application-services:theme",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/injector-tree:injector_tree",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/profiler",
@@ -43,8 +43,9 @@ ts_test_library(
     srcs = ["devtools-tabs.spec.ts"],
     deps = [
         ":devtools-tabs",
-        "//devtools/projects/ng-devtools/src/lib:theme",
         "//devtools/projects/ng-devtools/src/lib/application-environment",
+        "//devtools/projects/ng-devtools/src/lib/application-services:frame_manager",
+        "//devtools/projects/ng-devtools/src/lib/application-services:theme",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/tab-update",
         "//devtools/projects/protocol",
@@ -57,7 +58,6 @@ ts_test_library(
     ],
 )
 
-# todo(aleksanderbodurri): fix this test suite
 karma_web_test_suite(
     name = "test",
     deps = [
@@ -66,16 +66,3 @@ karma_web_test_suite(
         "//packages/platform-browser/animations",
     ],
 )
-
-# spec_bundle(
-#     name = "test_bundle",
-#     deps = [
-#         ":devtools_tabs_test",
-#         "//packages/platform-browser/animations",
-#         "//packages/animations",
-#         "//packages/common/http",
-#         "//packages/core",
-#         "//packages/core/src/util",
-#     ],
-#     platform = "browser",
-# )

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Inject, Injectable, InjectionToken} from '../di';
@@ -71,7 +71,7 @@ export const TESTABILITY_GETTER = new InjectionToken<GetTestability>('');
  * providers using the `provideProtractorTestingSupport()` function and adding them into the
  * `options.providers` array. Example:
  *
- * ```typescript
+ * ```ts
  * import {provideProtractorTestingSupport} from '@angular/platform-browser';
  *
  * await bootstrapApplication(RootComponent, providers: [provideProtractorTestingSupport()]);
@@ -81,15 +81,16 @@ export const TESTABILITY_GETTER = new InjectionToken<GetTestability>('');
  */
 @Injectable()
 export class Testability implements PublicTestability {
-  private _pendingCount: number = 0;
   private _isZoneStable: boolean = true;
   private _callbacks: WaitCallback[] = [];
 
-  private taskTrackingZone: {macroTasks: Task[]}|null = null;
+  private taskTrackingZone: {macroTasks: Task[]} | null = null;
 
   constructor(
-      private _ngZone: NgZone, private registry: TestabilityRegistry,
-      @Inject(TESTABILITY_GETTER) testabilityGetter: GetTestability) {
+    private _ngZone: NgZone,
+    private registry: TestabilityRegistry,
+    @Inject(TESTABILITY_GETTER) testabilityGetter: GetTestability,
+  ) {
     // If there was no Testability logic registered in the global scope
     // before, register the current testability getter as a global one.
     if (!_testabilityGetter) {
@@ -99,7 +100,7 @@ export class Testability implements PublicTestability {
     this._watchAngularEvents();
     _ngZone.run(() => {
       this.taskTrackingZone =
-          typeof Zone == 'undefined' ? null : Zone.current.get('TaskTrackingZone');
+        typeof Zone == 'undefined' ? null : Zone.current.get('TaskTrackingZone');
     });
   }
 
@@ -107,7 +108,7 @@ export class Testability implements PublicTestability {
     this._ngZone.onUnstable.subscribe({
       next: () => {
         this._isZoneStable = false;
-      }
+      },
     });
 
     this._ngZone.runOutsideAngular(() => {
@@ -118,38 +119,16 @@ export class Testability implements PublicTestability {
             this._isZoneStable = true;
             this._runCallbacksIfReady();
           });
-        }
+        },
       });
     });
-  }
-
-  /**
-   * Increases the number of pending request
-   * @deprecated pending requests are now tracked with zones.
-   */
-  increasePendingRequestCount(): number {
-    this._pendingCount += 1;
-    return this._pendingCount;
-  }
-
-  /**
-   * Decreases the number of pending request
-   * @deprecated pending requests are now tracked with zones
-   */
-  decreasePendingRequestCount(): number {
-    this._pendingCount -= 1;
-    if (this._pendingCount < 0) {
-      throw new Error('pending async requests below zero');
-    }
-    this._runCallbacksIfReady();
-    return this._pendingCount;
   }
 
   /**
    * Whether an associated application is stable
    */
   isStable(): boolean {
-    return this._isZoneStable && this._pendingCount === 0 && !this._ngZone.hasPendingMacrotasks;
+    return this._isZoneStable && !this._ngZone.hasPendingMacrotasks;
   }
 
   private _runCallbacksIfReady(): void {
@@ -188,7 +167,7 @@ export class Testability implements PublicTestability {
         // From TaskTrackingZone:
         // https://github.com/angular/zone.js/blob/master/lib/zone-spec/task-tracking.ts#L40
         creationLocation: (t as any).creationLocation as Error,
-        data: t.data
+        data: t.data,
       };
     });
   }
@@ -219,20 +198,14 @@ export class Testability implements PublicTestability {
   whenStable(doneCb: Function, timeout?: number, updateCb?: Function): void {
     if (updateCb && !this.taskTrackingZone) {
       throw new Error(
-          'Task tracking zone is required when passing an update callback to ' +
-          'whenStable(). Is "zone.js/plugins/task-tracking" loaded?');
+        'Task tracking zone is required when passing an update callback to ' +
+          'whenStable(). Is "zone.js/plugins/task-tracking" loaded?',
+      );
     }
     this.addCallback(doneCb, timeout, updateCb);
     this._runCallbacksIfReady();
   }
 
-  /**
-   * Get the number of pending requests
-   * @deprecated pending requests are now tracked with zones
-   */
-  getPendingRequestCount(): number {
-    return this._pendingCount;
-  }
   /**
    * Registers an application with a testability hook so that it can be tracked.
    * @param token token of application, root element
@@ -302,7 +275,7 @@ export class TestabilityRegistry {
    * Get a testability hook associated with the application
    * @param elem root element
    */
-  getTestability(elem: any): Testability|null {
+  getTestability(elem: any): Testability | null {
     return this._applications.get(elem) || null;
   }
 
@@ -326,7 +299,7 @@ export class TestabilityRegistry {
    * @param findInAncestors whether finding testability in ancestors if testability was not found in
    * current node
    */
-  findTestabilityInTree(elem: Node, findInAncestors: boolean = true): Testability|null {
+  findTestabilityInTree(elem: Node, findInAncestors: boolean = true): Testability | null {
     return _testabilityGetter?.findTestabilityInTree(this, elem, findInAncestors) ?? null;
   }
 }
@@ -339,8 +312,11 @@ export class TestabilityRegistry {
  */
 export interface GetTestability {
   addToWindow(registry: TestabilityRegistry): void;
-  findTestabilityInTree(registry: TestabilityRegistry, elem: any, findInAncestors: boolean):
-      Testability|null;
+  findTestabilityInTree(
+    registry: TestabilityRegistry,
+    elem: any,
+    findInAncestors: boolean,
+  ): Testability | null;
 }
 
 /**
@@ -351,4 +327,4 @@ export function setTestabilityGetter(getter: GetTestability): void {
   _testabilityGetter = getter;
 }
 
-let _testabilityGetter: GetTestability|undefined;
+let _testabilityGetter: GetTestability | undefined;

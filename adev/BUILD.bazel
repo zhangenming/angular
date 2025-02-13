@@ -1,8 +1,16 @@
-load("//:packages.bzl", "link_packages")
+load("@bazel_skylib//lib:collections.bzl", "collections")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@build_bazel_rules_nodejs//:index.bzl", "copy_to_bin")
+load("@npm//@angular/build-tooling/bazel/http-server:index.bzl", "http_server")
+load("@npm//@angular/build-tooling/bazel/remote-execution:index.bzl", "ENABLE_NETWORK")
 load("@npm//@angular-devkit/architect-cli:index.bzl", "architect", "architect_test")
+load("//adev/tools/local_deps:index.bzl", "ensure_local_package_deps", "link_local_packages")
 
 package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "tsconfig.json",
+])
 
 # All source and configuration files required to build the docs app
 APPLICATION_FILES = [
@@ -14,21 +22,29 @@ APPLICATION_FILES = [
     ["src/**/*"],
     exclude = [
         "src/**/*.spec.ts",
-        # Temporarily exclude generated sources produced by the non-bazel
-        # build until the whole project is built by bazel and this directory
-        # isn't needed.
-        "src/generated/**/*",
     ],
 )
 
 TEST_FILES = APPLICATION_FILES + [
     "karma.conf.js",
+    "test-main.ts",
     "tsconfig.spec.json",
 ] + glob(
-    ["**/*.spec.ts"],
+    ["src/**/*.spec.ts"],
 )
 
-APPLICATION_DEPS = link_packages([
+APPLICATION_ASSETS = [
+    "//adev/src/assets/images",
+    "//adev/src/assets/previews",
+    "//adev/src/assets:tutorials",
+    "//adev/src/assets/icons",
+    "//adev/src/assets:api",
+    "//adev/src/assets:content",
+]
+
+APPLICATION_DEPS = [
+    "@npm//@angular/docs",
+    "@npm//@angular/build",
     "@npm//@angular-devkit/build-angular",
     "@npm//@angular/animations",
     "@npm//@angular/cdk",
@@ -36,25 +52,16 @@ APPLICATION_DEPS = link_packages([
     "@npm//@angular/compiler",
     "@npm//@angular/compiler-cli",
     "@npm//@angular/core",
-    "@npm//@angular/docs",
     "@npm//@angular/forms",
     "@npm//@angular/material",
     "@npm//@angular/platform-browser",
     "@npm//@angular/platform-server",
     "@npm//@angular/router",
-    "@npm//gsap",
+    "@npm//@angular/ssr",
     "@npm//marked",
     "@npm//ngx-progressbar",
-    "@npm//ogl",
     "@npm//rxjs",
     "@npm//typescript",
-    "//adev/src/assets/images",
-    "//adev/src/assets/textures",
-    "//adev/src/assets/previews",
-    "//adev/src/assets:tutorials",
-    "//adev/src/assets/icons",
-    "//adev/src/assets:api",
-    "//adev/src/assets:content",
     "@npm//@typescript/vfs",
     "@npm//@codemirror/state",
     "@npm//@codemirror/view",
@@ -71,56 +78,102 @@ APPLICATION_DEPS = link_packages([
     "@npm//@lezer/highlight",
     "@npm//@lezer/javascript",
     "@npm//@lezer/common",
-    "@npm//xterm",
-    "@npm//xterm-addon-fit",
+    "@npm//@stackblitz/sdk",
+    "@npm//open-in-idx",
+    "@npm//@webcontainer/api",
+    "@npm//@xterm/xterm",
+    "@npm//@xterm/addon-fit",
+    "@npm//algoliasearch",
     "@npm//angular-split",
-])
+    "@npm//zone.js",
+]
 
-TEST_DEPS = APPLICATION_DEPS + link_packages([
+TEST_DEPS = APPLICATION_DEPS + [
     "@npm//@angular/platform-browser-dynamic",
-    "@npm//@angular/build-tooling/bazel/browsers/chromium",
     "@npm//@types/jasmine",
     "@npm//@types/node",
-    "@npm//assert",
     "@npm//jasmine",
     "@npm//jasmine-core",
     "@npm//karma-chrome-launcher",
     "@npm//karma-coverage",
     "@npm//karma-jasmine",
     "@npm//karma-jasmine-html-reporter",
-    "//aio/tools:windows-chromium-path",
-])
+]
+
+# Create `npm_link` targets for all dependencies that correspond to a
+# first-party Angular package that can be built from `HEAD`.
+link_local_packages(
+    all_deps = collections.uniq(APPLICATION_DEPS + TEST_DEPS),
+)
 
 copy_to_bin(
     name = "application_files_bin",
     srcs = APPLICATION_FILES,
 )
 
+bool_flag(
+    name = "full_build_adev",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "prod_build",
+    flag_values = {
+        ":full_build_adev": "true",
+    },
+)
+
+config_setting(
+    name = "dev_build",
+    flag_values = {
+        ":full_build_adev": "false",
+    },
+)
+
+config_based_architect_env = select({
+    ":dev_build": {
+        "NG_BUILD_PARTIAL_SSR": "1",
+    },
+    ":prod_build": {
+        "NG_BUILD_OPTIMIZE_CHUNKS": "1",
+    },
+})
+
+config_based_architect_flags = select({
+    ":dev_build": [
+        "angular-dev:build:development",
+    ],
+    ":prod_build": [
+        "angular-dev:build:production",
+    ],
+})
+
 architect(
     name = "build",
-    args = [
-        "angular-dev:build",
+    args = config_based_architect_flags + [
         "--output-path=build",
     ],
     chdir = "$(RULEDIR)",
-    data = APPLICATION_DEPS + [
+    data = ensure_local_package_deps(APPLICATION_DEPS) + APPLICATION_ASSETS + [
         ":application_files_bin",
     ],
+    env = config_based_architect_env,
+    # Network is required to inline fonts.
+    exec_properties = ENABLE_NETWORK,
     output_dir = True,
+    tags = [
+        "no-remote-exec",
+    ],
 )
 
-architect(
+http_server(
     name = "serve",
-    args = [
-        "angular-dev:serve",
-        "--poll=1000",
-        "--live-reload",
-        "--watch",
+    additional_root_paths = [
+        "angular/adev/build/browser",
     ],
-    chdir = package_name(),
-    data = APPLICATION_DEPS + [
-        ":application_files_bin",
-    ],
+    enable_dev_ui = True,
+    relax_cors = True,
+    deps = [":build"],
 )
 
 architect_test(
@@ -130,7 +183,10 @@ architect_test(
         "--no-watch",
     ],
     chdir = package_name(),
-    data = TEST_DEPS + TEST_FILES,
+    data = ensure_local_package_deps(TEST_DEPS) + TEST_FILES + APPLICATION_ASSETS + [
+        "//adev/tools:windows-chromium-path",
+        "@npm//@angular/build-tooling/bazel/browsers/chromium",
+    ],
     env = {
         "CHROME_BIN": "../$(CHROMIUM)",
     },

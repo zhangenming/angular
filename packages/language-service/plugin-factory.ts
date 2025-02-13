@@ -3,10 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import ts from 'typescript/lib/tsserverlibrary';
+// Note: use a type-only import to prevent TypeScript from being bundled in.
+import type ts from 'typescript';
 
 import {NgLanguageService, PluginConfig} from './api';
 
@@ -24,9 +25,7 @@ export const factory: ts.server.PluginModuleFactory = (tsModule): PluginModule =
       return plugin.create(info);
     },
     getExternalFiles(project: ts.server.Project): string[] {
-      // TODO(crisbeto): hardcoded value `2` to be replaced with `ts.ProgramUpdateLevel.Full`
-      // after we drop support for TS 5.2.
-      return plugin?.getExternalFiles?.(project, 2) ?? [];
+      return plugin?.getExternalFiles?.(project, tsModule.typescript.ProgramUpdateLevel.Full) ?? [];
     },
     onConfigurationChanged(config: PluginConfig): void {
       plugin?.onConfigurationChanged?.(config);

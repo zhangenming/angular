@@ -1,4 +1,4 @@
-load("@npm//@angular/docs:index.bzl", "generate_guides")
+load("//adev/shared-docs:index.bzl", "generate_guides")
 
 generate_guides(
     name = "essentials",
@@ -15,5 +15,6 @@ generate_guides(
         "//adev/src/assets/images:templates.svg",
         "//adev/src/assets/images:what_is_angular.svg",
     ],
+    mermaid_blocks = True,
     visibility = ["//adev:__subpackages__"],
 )

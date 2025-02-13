@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {PropType} from 'protocol';
@@ -73,11 +73,14 @@ describe('getPropType', () => {
       propTypeName: 'Set',
     },
     {
-      expression:
-          new Map<unknown, unknown>([['name', 'John'], ['age', 40], [{id: 123}, undefined]]),
+      expression: new Map<unknown, unknown>([
+        ['name', 'John'],
+        ['age', 40],
+        [{id: 123}, undefined],
+      ]),
       propType: PropType.Map,
       propTypeName: 'Map',
-    }
+    },
   ];
   for (const {expression, propType, propTypeName} of testCases) {
     it(`should determine ${String(expression)} as PropType:${propTypeName}(${propType})`, () => {

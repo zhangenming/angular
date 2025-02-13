@@ -7,21 +7,21 @@ consts: () => {
   __i18nMsg__('{$interpolation} and {$interpolation_1} and again {$interpolation_2}', [['interpolation', String.raw`\uFFFD0\uFFFD`],['interpolation_1', String.raw`\uFFFD1\uFFFD`],['interpolation_2', String.raw`\uFFFD2\uFFFD`]], {original_code: {'interpolation': '{{ valueA }}', 'interpolation_1': '{{ valueB }}', 'interpolation_2': '{{ valueA + valueB }}'}}, {meaning: 'm2', desc: 'd2'})
   __i18nMsg__('{$interpolation}', [['interpolation', String.raw`\uFFFD0\uFFFD`]], {original_code: {'interpolation': '{{ valueC }}'}}, {})
 return [
+	  ["title", $i18n_1$, "aria-label", $i18n_2$],
+	  ["title", $i18n_3$, "aria-roledescription", $i18n_4$],
     ["id", "dynamic-1", "aria-roledescription",  $i18n_0$, __AttributeMarker.I18n__,
       "title", "aria-label"],
-    ["title", $i18n_1$, "aria-label", $i18n_2$],
-    ["id", "dynamic-2", __AttributeMarker.I18n__, "title", "aria-roledescription"],
-    ["title", $i18n_3$, "aria-roledescription", $i18n_4$]
+    ["id", "dynamic-2", __AttributeMarker.I18n__, "title", "aria-roledescription"]
   ];
 },
 template: function MyComponent_Template(rf, ctx) {
   if (rf & 1) {
-    $r3$.ɵɵelementStart(0, "div", 0);
+    $r3$.ɵɵelementStart(0, "div", 2);
     $r3$.ɵɵpipe(1, "uppercase");
-    $r3$.ɵɵi18nAttributes(2, 1);
+    $r3$.ɵɵi18nAttributes(2, 0);
     $r3$.ɵɵelementEnd();
-    $r3$.ɵɵelementStart(3, "div", 2);
-    $r3$.ɵɵi18nAttributes(4, 3);
+    $r3$.ɵɵelementStart(3, "div", 3);
+    $r3$.ɵɵi18nAttributes(4, 1);
     $r3$.ɵɵelementEnd();
   }
   if (rf & 2) {
